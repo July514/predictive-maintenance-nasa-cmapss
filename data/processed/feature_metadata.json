@@ -1,0 +1,226 @@
+{
+  "dataset": "NASA CMAPSS FD003",
+  "created": "2026-05-30 19:01:20",
+  "r_version": "R version 4.5.1 (2025-06-13 ucrt)",
+  "final_sensors": ["sensor_2", "sensor_3", "sensor_4", "sensor_6", "sensor_8", "sensor_10", "sensor_11", "sensor_14", "sensor_15", "sensor_17", "sensor_20", "sensor_21"],
+  "dropped_sensors": [
+    {
+      "sensor": "sensor_12",
+      "reason": "VIF 52.7, redundant mit sensor_7 (r=0.99)"
+    },
+    {
+      "sensor": "sensor_7",
+      "reason": "VIF 17.9, redundant mit sensor_12"
+    },
+    {
+      "sensor": "sensor_9",
+      "reason": "VIF 14.9, redundant mit sensor_14 (r=0.95)"
+    },
+    {
+      "sensor": "sensor_13",
+      "reason": "VIF 14.7, redundant mit sensor_8 (r=0.96)"
+    }
+  ],
+  "constant_sensors": ["sensor_1", "sensor_5", "sensor_16", "sensor_18", "sensor_19"],
+  "rolling_window": 5,
+  "rolling_features": {
+    "mean": ["sensor_2_roll_mean", "sensor_3_roll_mean", "sensor_4_roll_mean", "sensor_6_roll_mean", "sensor_8_roll_mean", "sensor_10_roll_mean", "sensor_11_roll_mean", "sensor_14_roll_mean", "sensor_15_roll_mean", "sensor_17_roll_mean", "sensor_20_roll_mean", "sensor_21_roll_mean"],
+    "sd": ["sensor_2_roll_sd", "sensor_3_roll_sd", "sensor_4_roll_sd", "sensor_6_roll_sd", "sensor_8_roll_sd", "sensor_10_roll_sd", "sensor_11_roll_sd", "sensor_14_roll_sd", "sensor_15_roll_sd", "sensor_17_roll_sd", "sensor_20_roll_sd", "sensor_21_roll_sd"]
+  },
+  "normalization": {
+    "method": "min-max",
+    "fitted_on": "train",
+    "params": [
+      {
+        "feature": "sensor_2",
+        "min": 640.84,
+        "max": 645.11
+      },
+      {
+        "feature": "sensor_3",
+        "min": 1564.3,
+        "max": 1615.39
+      },
+      {
+        "feature": "sensor_4",
+        "min": 1377.06,
+        "max": 1441.16
+      },
+      {
+        "feature": "sensor_6",
+        "min": 21.45,
+        "max": 21.61
+      },
+      {
+        "feature": "sensor_8",
+        "min": 2386.9,
+        "max": 2388.6
+      },
+      {
+        "feature": "sensor_10",
+        "min": 1.29,
+        "max": 1.32
+      },
+      {
+        "feature": "sensor_11",
+        "min": 46.69,
+        "max": 48.44
+      },
+      {
+        "feature": "sensor_14",
+        "min": 8099.68,
+        "max": 8290.55
+      },
+      {
+        "feature": "sensor_15",
+        "min": 8.1563,
+        "max": 8.5705
+      },
+      {
+        "feature": "sensor_17",
+        "min": 388,
+        "max": 399
+      },
+      {
+        "feature": "sensor_20",
+        "min": 38.17,
+        "max": 39.85
+      },
+      {
+        "feature": "sensor_21",
+        "min": 22.8726,
+        "max": 23.9505
+      },
+      {
+        "feature": "sensor_2_roll_mean",
+        "min": 641.448,
+        "max": 644.062
+      },
+      {
+        "feature": "sensor_3_roll_mean",
+        "min": 1574.138,
+        "max": 1607.6
+      },
+      {
+        "feature": "sensor_4_roll_mean",
+        "min": 1387.078,
+        "max": 1434.006
+      },
+      {
+        "feature": "sensor_6_roll_mean",
+        "min": 21.45,
+        "max": 21.61
+      },
+      {
+        "feature": "sensor_8_roll_mean",
+        "min": 2387.27,
+        "max": 2388.56
+      },
+      {
+        "feature": "sensor_10_roll_mean",
+        "min": 1.298,
+        "max": 1.32
+      },
+      {
+        "feature": "sensor_11_roll_mean",
+        "min": 46.884,
+        "max": 48.314
+      },
+      {
+        "feature": "sensor_14_roll_mean",
+        "min": 8100.464,
+        "max": 8276.922
+      },
+      {
+        "feature": "sensor_15_roll_mean",
+        "min": 8.2111,
+        "max": 8.5389
+      },
+      {
+        "feature": "sensor_17_roll_mean",
+        "min": 389,
+        "max": 398
+      },
+      {
+        "feature": "sensor_20_roll_mean",
+        "min": 38.298,
+        "max": 39.732
+      },
+      {
+        "feature": "sensor_21_roll_mean",
+        "min": 23.004,
+        "max": 23.8387
+      },
+      {
+        "feature": "sensor_2_roll_sd",
+        "min": 0.0148,
+        "max": 0.8083
+      },
+      {
+        "feature": "sensor_3_roll_sd",
+        "min": 0.2107,
+        "max": 10.0148
+      },
+      {
+        "feature": "sensor_4_roll_sd",
+        "min": 0.3521,
+        "max": 10.3194
+      },
+      {
+        "feature": "sensor_6_roll_sd",
+        "min": 0,
+        "max": 0.0084
+      },
+      {
+        "feature": "sensor_8_roll_sd",
+        "min": 0,
+        "max": 0.5045
+      },
+      {
+        "feature": "sensor_10_roll_sd",
+        "min": 0,
+        "max": 0.0055
+      },
+      {
+        "feature": "sensor_11_roll_sd",
+        "min": 0.0055,
+        "max": 0.2902
+      },
+      {
+        "feature": "sensor_14_roll_sd",
+        "min": 0.1742,
+        "max": 10.3345
+      },
+      {
+        "feature": "sensor_15_roll_sd",
+        "min": 0.0013,
+        "max": 0.0569
+      },
+      {
+        "feature": "sensor_17_roll_sd",
+        "min": 0,
+        "max": 2.2361
+      },
+      {
+        "feature": "sensor_20_roll_sd",
+        "min": 0.0055,
+        "max": 0.2455
+      },
+      {
+        "feature": "sensor_21_roll_sd",
+        "min": 0.0021,
+        "max": 0.1735
+      }
+    ]
+  },
+  "rul_cap": 125,
+  "rul_method": "piecewise_linear",
+  "target_col": "RUL",
+  "id_cols": ["unit_number", "time_in_cycles"],
+  "feature_groups": {
+    "raw_sensors": ["sensor_2", "sensor_3", "sensor_4", "sensor_6", "sensor_8", "sensor_10", "sensor_11", "sensor_14", "sensor_15", "sensor_17", "sensor_20", "sensor_21"],
+    "rolling_mean": ["sensor_2_roll_mean", "sensor_3_roll_mean", "sensor_4_roll_mean", "sensor_6_roll_mean", "sensor_8_roll_mean", "sensor_10_roll_mean", "sensor_11_roll_mean", "sensor_14_roll_mean", "sensor_15_roll_mean", "sensor_17_roll_mean", "sensor_20_roll_mean", "sensor_21_roll_mean"],
+    "rolling_sd": ["sensor_2_roll_sd", "sensor_3_roll_sd", "sensor_4_roll_sd", "sensor_6_roll_sd", "sensor_8_roll_sd", "sensor_10_roll_sd", "sensor_11_roll_sd", "sensor_14_roll_sd", "sensor_15_roll_sd", "sensor_17_roll_sd", "sensor_20_roll_sd", "sensor_21_roll_sd"],
+    "normalized": ["sensor_2_norm", "sensor_3_norm", "sensor_4_norm", "sensor_6_norm", "sensor_8_norm", "sensor_10_norm", "sensor_11_norm", "sensor_14_norm", "sensor_15_norm", "sensor_17_norm", "sensor_20_norm", "sensor_21_norm", "sensor_2_roll_mean_norm", "sensor_3_roll_mean_norm", "sensor_4_roll_mean_norm", "sensor_6_roll_mean_norm", "sensor_8_roll_mean_norm", "sensor_10_roll_mean_norm", "sensor_11_roll_mean_norm", "sensor_14_roll_mean_norm", "sensor_15_roll_mean_norm", "sensor_17_roll_mean_norm", "sensor_20_roll_mean_norm", "sensor_21_roll_mean_norm", "sensor_2_roll_sd_norm", "sensor_3_roll_sd_norm", "sensor_4_roll_sd_norm", "sensor_6_roll_sd_norm", "sensor_8_roll_sd_norm", "sensor_10_roll_sd_norm", "sensor_11_roll_sd_norm", "sensor_14_roll_sd_norm", "sensor_15_roll_sd_norm", "sensor_17_roll_sd_norm", "sensor_20_roll_sd_norm", "sensor_21_roll_sd_norm"]
+  }
+}

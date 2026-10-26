@@ -1,0 +1,17 @@
+services:
+  pdm-shiny:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.shiny
+    container_name: pdm-shiny
+    restart: always
+    ports:
+      - "127.0.0.1:3838:3838"
+    volumes:
+      - ./data:/data:ro            # Read-only im Container
+    networks:
+      - pdm-network
+
+networks:
+  pdm-network:
+    driver: bridge

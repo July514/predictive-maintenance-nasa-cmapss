@@ -1,0 +1,1677 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.38">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Julian Haar">
+<meta name="dcterms.date" content="2026-05-30">
+
+<title>01 – Explorative Datenanalyse: NASA CMAPSS FD003</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="01_eda_files/libs/clipboard/clipboard.min.js"></script>
+<script src="01_eda_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="01_eda_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="01_eda_files/libs/quarto-html/popper.min.js"></script>
+<script src="01_eda_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="01_eda_files/libs/quarto-html/anchor.min.js"></script>
+<link href="01_eda_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="01_eda_files/libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="01_eda_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="01_eda_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="01_eda_files/libs/bootstrap/bootstrap-293cc809d15782442e9b1098eedb6797.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script src="01_eda_files/libs/kePrint-0.0.1/kePrint.js"></script>
+
+<link href="01_eda_files/libs/lightable-0.0.1/lightable.css" rel="stylesheet">
+
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#ziel-dieses-notebooks" id="toc-ziel-dieses-notebooks" class="nav-link active" data-scroll-target="#ziel-dieses-notebooks">Ziel dieses Notebooks</a></li>
+  <li><a href="#setup" id="toc-setup" class="nav-link" data-scroll-target="#setup">Setup</a></li>
+  <li><a href="#datensatz-überblick" id="toc-datensatz-überblick" class="nav-link" data-scroll-target="#datensatz-überblick">1. Datensatz-Überblick</a>
+  <ul class="collapse">
+  <li><a href="#lebensdauer-verteilung" id="toc-lebensdauer-verteilung" class="nav-link" data-scroll-target="#lebensdauer-verteilung">1.1 Lebensdauer-Verteilung</a></li>
+  </ul></li>
+  <li><a href="#sensor-analyse" id="toc-sensor-analyse" class="nav-link" data-scroll-target="#sensor-analyse">2. Sensor-Analyse</a>
+  <ul class="collapse">
+  <li><a href="#konstante-sensoren-identifizieren" id="toc-konstante-sensoren-identifizieren" class="nav-link" data-scroll-target="#konstante-sensoren-identifizieren">2.1 Konstante Sensoren identifizieren</a></li>
+  <li><a href="#sensor-verläufe-beispiel-engines" id="toc-sensor-verläufe-beispiel-engines" class="nav-link" data-scroll-target="#sensor-verläufe-beispiel-engines">2.2 Sensor-Verläufe (Beispiel-Engines)</a></li>
+  </ul></li>
+  <li><a href="#korrelationsanalyse" id="toc-korrelationsanalyse" class="nav-link" data-scroll-target="#korrelationsanalyse">3. Korrelationsanalyse</a></li>
+  <li><a href="#verteilungs-checks-für-survival-analysis" id="toc-verteilungs-checks-für-survival-analysis" class="nav-link" data-scroll-target="#verteilungs-checks-für-survival-analysis">4. Verteilungs-Checks für Survival Analysis</a></li>
+  <li><a href="#vif-check-multikollinearität" id="toc-vif-check-multikollinearität" class="nav-link" data-scroll-target="#vif-check-multikollinearität">5. VIF-Check (Multikollinearität)</a>
+  <ul class="collapse">
+  <li><a href="#warum-vif" id="toc-warum-vif" class="nav-link" data-scroll-target="#warum-vif">Warum VIF?</a></li>
+  </ul></li>
+  <li><a href="#eda-zusammenfassung" id="toc-eda-zusammenfassung" class="nav-link" data-scroll-target="#eda-zusammenfassung">6. EDA-Zusammenfassung</a></li>
+  </ul>
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="..\..\01_eda.pdf"><i class="bi bi-file-pdf"></i>PDF</a></li></ul></div></nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">01 – Explorative Datenanalyse: NASA CMAPSS FD003</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Julian Haar </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">May 30, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="ziel-dieses-notebooks" class="level2">
+<h2 class="anchored" data-anchor-id="ziel-dieses-notebooks">Ziel dieses Notebooks</h2>
+<p>Die explorative Datenanalyse (EDA) beantwortet drei Fragen bevor ein einziges Modell gebaut wird:</p>
+<ol type="1">
+<li><strong>Wie sind die Engine-Lebensdauern verteilt?</strong> Gibt es Subgruppen, die auf unterschiedliche Ausfallmechanismen hinweisen?</li>
+<li><strong>Welche Sensoren tragen Information über den Degradationszustand?</strong> Welche sind redundant oder konstant?</li>
+<li><strong>Rechtfertigt die Datenstruktur den Survival-Analysis-Ansatz?</strong> Passt Weibull oder Normal besser?</li>
+</ol>
+<p>Die Erkenntnisse fließen direkt in die Feature-Auswahl (<code>02_preprocessing.qmd</code>) und die Modellwahl (Survival Analysis + ML) ein.</p>
+<hr>
+</section>
+<section id="setup" class="level2">
+<h2 class="anchored" data-anchor-id="setup">Setup</h2>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># renv mit absolutem Pfad aktivieren (relativ zur qmd-Datei, nicht root.dir)</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>renv_path <span class="ot">&lt;-</span> <span class="fu">file.path</span>(<span class="fu">dirname</span>(knitr<span class="sc">::</span><span class="fu">current_input</span>(<span class="at">dir =</span> <span class="cn">TRUE</span>)), </span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>                       <span class="st">".."</span>, <span class="st">"renv"</span>, <span class="st">"activate.R"</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(renv_path)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="st">"shiny-app/R/data_loader.R"</span>)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggcorrplot)</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(patchwork)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(fitdistrplus)   <span class="co"># lädt MASS → maskiert dplyr::select!</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(kableExtra)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(car)            <span class="co"># für VIF-Berechnung</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co"># Paket-Konflikte auflösen: dplyr-Funktionen haben Vorrang.</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co"># fitdistrplus zieht MASS rein, das select() und filter() überschreibt.</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(conflicted)</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="fu">conflict_prefer</span>(<span class="st">"select"</span>, <span class="st">"dplyr"</span>)</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="fu">conflict_prefer</span>(<span class="st">"filter"</span>, <span class="st">"dplyr"</span>)</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="st">"shiny-app/R/data_loader.R"</span>)</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="co"># Trainingsdaten laden (RUL bereits berechnet, konstante Sensoren gedroppt)</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>train <span class="ot">&lt;-</span> <span class="fu">load_train_fd003</span>(<span class="at">base_path =</span> <span class="st">"../data/raw/CMaps"</span>)</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co"># Wahre RUL für Test-Engines</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>rul <span class="ot">&lt;-</span> <span class="fu">read_table</span>(</span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>  <span class="st">"../data/raw/CMaps/RUL_FD003.txt"</span>,</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>  <span class="at">col_names  =</span> <span class="fu">c</span>(<span class="st">"RUL_true"</span>, <span class="st">"dummy"</span>),</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>  <span class="at">col_types  =</span> <span class="fu">cols</span>(<span class="at">RUL_true =</span> <span class="fu">col_double</span>(), <span class="at">dummy =</span> <span class="fu">col_skip</span>()),</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>  <span class="at">show_col_types =</span> <span class="cn">FALSE</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Trainingsdaten:"</span>, <span class="fu">nrow</span>(train), <span class="st">"Zeilen,"</span>, </span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>    <span class="fu">n_distinct</span>(train<span class="sc">$</span>unit_number), <span class="st">"Engines</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Trainingsdaten: 24720 Zeilen, 100 Engines</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Test-RUL Labels:"</span>, <span class="fu">nrow</span>(rul), <span class="st">"Engines</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Test-RUL Labels: 100 Engines</code></pre>
+</div>
+</div>
+<pre><code>Trainingsdaten: 24720 Zeilen, 100 Engines
+Test-RUL Labels: 100 Engines</code></pre>
+<p><strong>Datensatz-Struktur:</strong> Die Trainingsdaten enthalten <strong>100 Engines</strong> die jeweils bis zum Ausfall laufen. Jede Zeile ist ein Betriebszyklus. Die RUL (Remaining Useful Life) wurde als <code>max(time_in_cycles) - time_in_cycles</code> berechnet und auf 125 gekappt (Piecewise Linear). Die Test-RUL-Labels geben für jede Test-Engine an, wie viele Zyklen sie nach dem letzten bekannten Zeitpunkt noch gelaufen wäre.</p>
+<hr>
+</section>
+<section id="datensatz-überblick" class="level2">
+<h2 class="anchored" data-anchor-id="datensatz-überblick">1. Datensatz-Überblick</h2>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">glimpse</span>(train)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Rows: 24,720
+Columns: 22
+$ unit_number    &lt;dbl&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
+$ time_in_cycles &lt;dbl&gt; 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, …
+$ os_1           &lt;dbl&gt; -0.0005, 0.0008, -0.0014, -0.0020, 0.0016, 0.0011, -0.0…
+$ os_2           &lt;dbl&gt; 4e-04, -3e-04, -2e-04, 1e-04, 0e+00, -5e-04, 2e-04, -5e…
+$ os_3           &lt;dbl&gt; 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, …
+$ RUL            &lt;dbl&gt; 125, 125, 125, 125, 125, 125, 125, 125, 125, 125, 125, …
+$ sensor_2       &lt;dbl&gt; 642.36, 642.50, 642.18, 642.92, 641.68, 642.24, 642.58,…
+$ sensor_3       &lt;dbl&gt; 1583.23, 1584.69, 1582.35, 1585.61, 1588.63, 1584.09, 1…
+$ sensor_4       &lt;dbl&gt; 1396.84, 1396.89, 1405.61, 1392.27, 1397.65, 1400.01, 1…
+$ sensor_6       &lt;dbl&gt; 21.61, 21.61, 21.61, 21.61, 21.61, 21.61, 21.61, 21.60,…
+$ sensor_7       &lt;dbl&gt; 553.97, 554.55, 554.43, 555.21, 554.74, 554.75, 554.58,…
+$ sensor_8       &lt;dbl&gt; 2387.96, 2388.00, 2388.03, 2388.00, 2388.04, 2388.00, 2…
+$ sensor_9       &lt;dbl&gt; 9062.17, 9061.78, 9070.23, 9064.57, 9076.14, 9074.98, 9…
+$ sensor_10      &lt;dbl&gt; 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, 1.3, …
+$ sensor_11      &lt;dbl&gt; 47.30, 47.23, 47.22, 47.24, 47.15, 47.07, 47.38, 47.31,…
+$ sensor_12      &lt;dbl&gt; 522.31, 522.42, 522.03, 522.49, 522.58, 522.42, 522.46,…
+$ sensor_13      &lt;dbl&gt; 2388.01, 2388.03, 2388.00, 2388.08, 2388.03, 2388.02, 2…
+$ sensor_14      &lt;dbl&gt; 8145.32, 8152.85, 8150.17, 8146.56, 8147.80, 8144.92, 8…
+$ sensor_15      &lt;dbl&gt; 8.4246, 8.4403, 8.3901, 8.3878, 8.3869, 8.4152, 8.3842,…
+$ sensor_17      &lt;dbl&gt; 391, 392, 391, 392, 392, 393, 391, 391, 392, 391, 392, …
+$ sensor_20      &lt;dbl&gt; 39.11, 38.99, 38.85, 38.96, 39.14, 38.92, 38.84, 39.05,…
+$ sensor_21      &lt;dbl&gt; 23.3537, 23.4491, 23.3669, 23.2951, 23.4583, 23.4281, 2…</code></pre>
+</div>
+</div>
+<pre><code>Rows: 24,720
+Columns: 22
+$ unit_number    &lt;dbl&gt; 1, 1, 1, 1, 1, ...
+$ time_in_cycles &lt;dbl&gt; 1, 2, 3, 4, 5, ...
+$ os_1           &lt;dbl&gt; -0.0005, 0.0008, ...
+$ os_2           &lt;dbl&gt; 4e-04, -3e-04, ...
+$ os_3           &lt;dbl&gt; 100, 100, 100, ...
+$ RUL            &lt;dbl&gt; 125, 125, 125, ...
+$ sensor_2       &lt;dbl&gt; 642.36, 642.50, ...
+$ sensor_3       &lt;dbl&gt; 1583.23, 1584.69, ...
+[... weitere Sensorspalten ...]</code></pre>
+<p>22 Spalten: 2 IDs (unit_number, time_in_cycles), 3 Operating Settings (os_1–3), 1 Zielvariable (RUL), 16 Sensoren (konstante bereits vom Loader entfernt).</p>
+<section id="lebensdauer-verteilung" class="level3">
+<h3 class="anchored" data-anchor-id="lebensdauer-verteilung">1.1 Lebensdauer-Verteilung</h3>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>lifetimes <span class="ot">&lt;-</span> train <span class="sc">%&gt;%</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(unit_number) <span class="sc">%&gt;%</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">lifetime =</span> <span class="fu">max</span>(time_in_cycles))</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(lifetimes<span class="sc">$</span>lifetime)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  145.0   189.8   220.5   247.2   279.8   525.0 </code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>p1 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(lifetimes, <span class="fu">aes</span>(<span class="at">x =</span> lifetime)) <span class="sc">+</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">binwidth =</span> <span class="dv">20</span>, <span class="at">fill =</span> <span class="st">"#0d6efd"</span>, </span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>                 <span class="at">alpha =</span> <span class="fl">0.8</span>, <span class="at">color =</span> <span class="st">"white"</span>) <span class="sc">+</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="fu">mean</span>(lifetimes<span class="sc">$</span>lifetime), </span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>             <span class="at">color =</span> <span class="st">"red"</span>, <span class="at">linetype =</span> <span class="st">"dashed"</span>) <span class="sc">+</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Verteilung der Engine-Lebensdauern (FD003)"</span>,</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>       <span class="at">subtitle =</span> <span class="fu">sprintf</span>(<span class="st">"Mittelwert: %.1f | Median: %.1f | SD: %.1f"</span>,</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>                           <span class="fu">mean</span>(lifetimes<span class="sc">$</span>lifetime),</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>                           <span class="fu">median</span>(lifetimes<span class="sc">$</span>lifetime),</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>                           <span class="fu">sd</span>(lifetimes<span class="sc">$</span>lifetime)),</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>       <span class="at">x =</span> <span class="st">"Lebensdauer (Zyklen)"</span>, <span class="at">y =</span> <span class="st">"Anzahl Engines"</span>) <span class="sc">+</span></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a><span class="fu">ggsave</span>(<span class="st">"reports/figures/lifetime_hist.png"</span>, p1, </span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>       <span class="at">width =</span> <span class="dv">8</span>, <span class="at">height =</span> <span class="dv">5</span>, <span class="at">dpi =</span> <span class="dv">150</span>)</span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>p1</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="01_eda_files/figure-html/unnamed-chunk-3-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<pre><code>   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  145.0   189.8   220.5   247.2   279.8   525.0</code></pre>
+<p><strong>Interpretation:</strong> Die Verteilung zeigt zwei erkennbare Gruppen:</p>
+<ul>
+<li><strong>Hauptgruppe (145–350 Zyklen):</strong> Grossteil der Engines (~90 Stück), vermutlich ein Fault Mode</li>
+<li><strong>Ausreißer-Gruppe (400–525 Zyklen):</strong> ca. 10 Engines mit deutlich längerer Lebensdauer</li>
+</ul>
+<p>Der Gap zwischen ~350 und ~400 Zyklen ist kein Zufall: FD003 enthält zwei Fault Modes (<strong>HPC Degradation</strong> und <strong>Fan Degradation</strong>), die zu unterschiedlichen typischen Lebensdauern führen. Diese sind in den Rohdaten nicht gelabelt – die Bimodalität ist der erste statistische Hinweis auf ihre Existenz. Das motiviert später eine Kaplan-Meier-Analyse mit zwei Subgruppen und einen Log-Rank-Test als formalen Nachweis.</p>
+<hr>
+</section>
+</section>
+<section id="sensor-analyse" class="level2">
+<h2 class="anchored" data-anchor-id="sensor-analyse">2. Sensor-Analyse</h2>
+<section id="konstante-sensoren-identifizieren" class="level3">
+<h3 class="anchored" data-anchor-id="konstante-sensoren-identifizieren">2.1 Konstante Sensoren identifizieren</h3>
+<p>Sensoren die sich über die gesamte Lebensdauer nicht verändern, tragen keine Information über den Degradationszustand und werden vor der Modellierung entfernt.</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>sensor_cols <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">"^sensor_"</span>, <span class="fu">names</span>(train), <span class="at">value =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>sensor_sd <span class="ot">&lt;-</span> train <span class="sc">%&gt;%</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="fu">all_of</span>(sensor_cols)) <span class="sc">%&gt;%</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="fu">across</span>(<span class="fu">everything</span>(), sd)) <span class="sc">%&gt;%</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="fu">everything</span>(), <span class="at">names_to =</span> <span class="st">"sensor"</span>, <span class="at">values_to =</span> <span class="st">"sd"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(sd)</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Visualisierung</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(sensor_sd, <span class="fu">aes</span>(<span class="at">x =</span> <span class="fu">reorder</span>(sensor, sd), <span class="at">y =</span> sd,</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>                       <span class="at">fill =</span> sd <span class="sc">&lt;</span> <span class="fl">0.001</span>)) <span class="sc">+</span></span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>() <span class="sc">+</span></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="st">"FALSE"</span> <span class="ot">=</span> <span class="st">"#0d6efd"</span>, <span class="st">"TRUE"</span> <span class="ot">=</span> <span class="st">"#dc3545"</span>),</span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>                    <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"verwendbar"</span>, <span class="st">"konstant → gedroppt"</span>)) <span class="sc">+</span></span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Sensor-Standardabweichungen"</span>,</span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>       <span class="at">subtitle =</span> <span class="st">"Rote Balken: nahezu konstant, bereits vom Loader entfernt"</span>,</span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a>       <span class="at">x =</span> <span class="st">"Sensor"</span>, <span class="at">y =</span> <span class="st">"Standardabweichung"</span>, <span class="at">fill =</span> <span class="st">""</span>) <span class="sc">+</span></span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>() <span class="sc">+</span></span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme</span>(<span class="at">axis.text.x =</span> <span class="fu">element_text</span>(<span class="at">angle =</span> <span class="dv">45</span>, <span class="at">hjust =</span> <span class="dv">1</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="01_eda_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Hinweis:</strong> Der <code>data_loader.R</code> entfernt bereits automatisch Sensoren mit SD &lt; 0.001. Bei FD003 wurden folgende Sensoren gedroppt: <code>sensor_1, sensor_5, sensor_16, sensor_18, sensor_19</code>. Es verbleiben <strong>16 informative Sensoren</strong>.</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Übersichtstabelle: Standardabweichung je Sensor</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>sensor_sd <span class="sc">%&gt;%</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">status =</span> <span class="fu">if_else</span>(sd <span class="sc">&lt;</span> <span class="fl">0.001</span>, <span class="st">"KONSTANT – gedroppt"</span>, <span class="st">"verwendet"</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">kable</span>(<span class="at">digits =</span> <span class="dv">4</span>, <span class="at">caption =</span> <span class="st">"Sensor-Standardabweichungen (FD003)"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">kable_styling</span>(<span class="at">bootstrap_options =</span> <span class="fu">c</span>(<span class="st">"striped"</span>, <span class="st">"hover"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Sensor-Standardabweichungen (FD003)</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">sensor</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">sd</th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">status</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">sensor_10</td>
+<td style="text-align: right;">0.0035</td>
+<td style="text-align: left;">verwendet</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">sensor_6</td>
+<td style="text-align: right;">0.0181</td>
+<td style="text-align: left;">verwendet</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">sensor_15</td>
+<td style="text-align: right;">0.0605</td>
+<td style="text-align: left;">verwendet</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">sensor_21</td>
+<td style="text-align: right;">0.1492</td>
+<td style="text-align: left;">verwendet</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">sensor_13</td>
+<td style="text-align: right;">0.1581</td>
+<td style="text-align: left;">verwendet</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">sensor_8</td>
+<td style="text-align: right;">0.1583</td>
+<td style="text-align: left;">verwendet</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">sensor_20</td>
+<td style="text-align: right;">0.2489</td>
+<td style="text-align: left;">verwendet</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">sensor_11</td>
+<td style="text-align: right;">0.3001</td>
+<td style="text-align: left;">verwendet</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">sensor_2</td>
+<td style="text-align: right;">0.5230</td>
+<td style="text-align: left;">verwendet</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">sensor_17</td>
+<td style="text-align: right;">1.7615</td>
+<td style="text-align: left;">verwendet</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">sensor_12</td>
+<td style="text-align: right;">3.2553</td>
+<td style="text-align: left;">verwendet</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">sensor_7</td>
+<td style="text-align: right;">3.4373</td>
+<td style="text-align: left;">verwendet</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">sensor_3</td>
+<td style="text-align: right;">6.8104</td>
+<td style="text-align: left;">verwendet</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">sensor_4</td>
+<td style="text-align: right;">9.7732</td>
+<td style="text-align: left;">verwendet</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">sensor_14</td>
+<td style="text-align: right;">16.5041</td>
+<td style="text-align: left;">verwendet</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">sensor_9</td>
+<td style="text-align: right;">19.9803</td>
+<td style="text-align: left;">verwendet</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="sensor-verläufe-beispiel-engines" class="level3">
+<h3 class="anchored" data-anchor-id="sensor-verläufe-beispiel-engines">2.2 Sensor-Verläufe (Beispiel-Engines)</h3>
+<p>Vier repräsentative Engines aus unterschiedlichen Lebensdauer-Bereichen zeigen wie sich die Sensoren über die Betriebszeit entwickeln.</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>example_engines <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">25</span>, <span class="dv">50</span>, <span class="dv">80</span>)</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>example_sensors <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"sensor_2"</span>, <span class="st">"sensor_7"</span>, <span class="st">"sensor_11"</span>, <span class="st">"sensor_15"</span>)</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>plot_data <span class="ot">&lt;-</span> train <span class="sc">%&gt;%</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(unit_number <span class="sc">%in%</span> example_engines) <span class="sc">%&gt;%</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(unit_number, time_in_cycles, <span class="fu">all_of</span>(example_sensors)) <span class="sc">%&gt;%</span></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="fu">all_of</span>(example_sensors), </span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>               <span class="at">names_to =</span> <span class="st">"sensor"</span>, <span class="at">values_to =</span> <span class="st">"value"</span>)</span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>p2 <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(plot_data, <span class="fu">aes</span>(<span class="at">x =</span> time_in_cycles, <span class="at">y =</span> value,</span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a>                             <span class="at">color =</span> <span class="fu">factor</span>(unit_number))) <span class="sc">+</span></span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="at">alpha =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>sensor, <span class="at">scales =</span> <span class="st">"free_y"</span>, <span class="at">ncol =</span> <span class="dv">2</span>) <span class="sc">+</span></span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Sensor-Verläufe ausgewählter Engines (FD003)"</span>,</span>
+<span id="cb15-15"><a href="#cb15-15" aria-hidden="true" tabindex="-1"></a>       <span class="at">subtitle =</span> <span class="st">"Engines 1, 25, 50, 80 – verschiedene Lebensdauern"</span>,</span>
+<span id="cb15-16"><a href="#cb15-16" aria-hidden="true" tabindex="-1"></a>       <span class="at">x =</span> <span class="st">"Zyklus"</span>, <span class="at">y =</span> <span class="st">"Sensorwert"</span>, <span class="at">color =</span> <span class="st">"Engine"</span>) <span class="sc">+</span></span>
+<span id="cb15-17"><a href="#cb15-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>()</span>
+<span id="cb15-18"><a href="#cb15-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-19"><a href="#cb15-19" aria-hidden="true" tabindex="-1"></a><span class="fu">ggsave</span>(<span class="st">"reports/figures/sensor_verlaeufe.png"</span>, p2,</span>
+<span id="cb15-20"><a href="#cb15-20" aria-hidden="true" tabindex="-1"></a>       <span class="at">width =</span> <span class="dv">10</span>, <span class="at">height =</span> <span class="dv">6</span>, <span class="at">dpi =</span> <span class="dv">150</span>)</span>
+<span id="cb15-21"><a href="#cb15-21" aria-hidden="true" tabindex="-1"></a>p2</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="01_eda_files/figure-html/unnamed-chunk-6-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Interpretation:</strong></p>
+<ul>
+<li><strong>sensor_2 und sensor_11</strong> steigen monoton an – je näher der Ausfall, desto höher der Wert</li>
+<li><strong>sensor_7</strong> fällt monoton – klarer Degradationstrend in die entgegengesetzte Richtung</li>
+<li><strong>sensor_15</strong> zeigt einen steigenden Trend, aber mit stärkerem Rauschen</li>
+<li>Alle Kurven <strong>konvergieren auf einen gemeinsamen Failure-Threshold</strong>, unabhängig davon wie lange die Engine gelaufen ist. Das ist die physikalische Signatur: die Maschine fällt aus wenn ein kritischer Degradationszustand erreicht ist – nur unterschiedlich schnell</li>
+<li>Der Verlauf ist <strong>nicht-linear</strong>: lange flach, dann beschleunigt gegen Ende. Das wird in der Korrelationsanalyse relevant (Abschnitt 3)</li>
+</ul>
+<hr>
+</section>
+</section>
+<section id="korrelationsanalyse" class="level2">
+<h2 class="anchored" data-anchor-id="korrelationsanalyse">3. Korrelationsanalyse</h2>
+<p>Die Korrelationsanalyse beantwortet zwei Fragen: (1) Welche Sensoren hängen linear mit der RUL zusammen? (2) Welche Sensoren messen dasselbe – also sind redundant?</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>corr_data <span class="ot">&lt;-</span> train <span class="sc">%&gt;%</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="fu">all_of</span>(sensor_cols), RUL) <span class="sc">%&gt;%</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cor</span>(<span class="at">use =</span> <span class="st">"complete.obs"</span>)</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>p3 <span class="ot">&lt;-</span> <span class="fu">ggcorrplot</span>(corr_data,</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>           <span class="at">hc.order =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>           <span class="at">type     =</span> <span class="st">"lower"</span>,</span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>           <span class="at">lab      =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>           <span class="at">lab_size =</span> <span class="fl">2.5</span>,</span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>           <span class="at">colors   =</span> <span class="fu">c</span>(<span class="st">"#dc3545"</span>, <span class="st">"white"</span>, <span class="st">"#198754"</span>)) <span class="sc">+</span></span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Korrelationsmatrix: Sensoren + RUL (FD003)"</span>)</span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a><span class="fu">ggsave</span>(<span class="st">"reports/figures/korrelationsmatrix.png"</span>, p3,</span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a>       <span class="at">width =</span> <span class="dv">10</span>, <span class="at">height =</span> <span class="dv">9</span>, <span class="at">dpi =</span> <span class="dv">150</span>)</span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a>p3</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="01_eda_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Top-Korrelationen mit RUL</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>rul_corr <span class="ot">&lt;-</span> corr_data[, <span class="st">"RUL"</span>] <span class="sc">%&gt;%</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as.data.frame</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rownames_to_column</span>(<span class="st">"sensor"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">correlation =</span> <span class="st">"."</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(sensor <span class="sc">!=</span> <span class="st">"RUL"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">abs_corr =</span> <span class="fu">abs</span>(correlation)) <span class="sc">%&gt;%</span></span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(abs_corr))</span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>rul_corr <span class="sc">%&gt;%</span></span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">kable</span>(<span class="at">digits =</span> <span class="dv">3</span>, <span class="at">caption =</span> <span class="st">"Sensor-Korrelationen mit RUL"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">kable_styling</span>(<span class="at">bootstrap_options =</span> <span class="fu">c</span>(<span class="st">"striped"</span>, <span class="st">"hover"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Sensor-Korrelationen mit RUL</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">sensor</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">correlation</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">abs_corr</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">sensor_11</td>
+<td style="text-align: right;">-0.805</td>
+<td style="text-align: right;">0.805</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">sensor_4</td>
+<td style="text-align: right;">-0.770</td>
+<td style="text-align: right;">0.770</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">sensor_17</td>
+<td style="text-align: right;">-0.726</td>
+<td style="text-align: right;">0.726</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">sensor_3</td>
+<td style="text-align: right;">-0.696</td>
+<td style="text-align: right;">0.696</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">sensor_2</td>
+<td style="text-align: right;">-0.682</td>
+<td style="text-align: right;">0.682</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">sensor_9</td>
+<td style="text-align: right;">-0.644</td>
+<td style="text-align: right;">0.644</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">sensor_13</td>
+<td style="text-align: right;">-0.635</td>
+<td style="text-align: right;">0.635</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">sensor_8</td>
+<td style="text-align: right;">-0.634</td>
+<td style="text-align: right;">0.634</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">sensor_14</td>
+<td style="text-align: right;">-0.564</td>
+<td style="text-align: right;">0.564</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">sensor_10</td>
+<td style="text-align: right;">-0.495</td>
+<td style="text-align: right;">0.495</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">sensor_12</td>
+<td style="text-align: right;">-0.375</td>
+<td style="text-align: right;">0.375</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">sensor_7</td>
+<td style="text-align: right;">-0.357</td>
+<td style="text-align: right;">0.357</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">sensor_6</td>
+<td style="text-align: right;">-0.096</td>
+<td style="text-align: right;">0.096</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">sensor_20</td>
+<td style="text-align: right;">0.050</td>
+<td style="text-align: right;">0.050</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">sensor_21</td>
+<td style="text-align: right;">0.042</td>
+<td style="text-align: right;">0.042</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">sensor_15</td>
+<td style="text-align: right;">-0.002</td>
+<td style="text-align: right;">0.002</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p><strong>Ergebnisse:</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Gruppe</th>
+<th>Sensoren</th>
+<th>Korrelation mit RUL</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Starke Prädiktoren</td>
+<td>sensor_11, _4, _17, _3, _2, _9, _13, _8</td>
+<td>|r| &gt; 0.60</td>
+</tr>
+<tr class="even">
+<td>Mittlere Prädiktoren</td>
+<td>sensor_14, _10, _12, _7</td>
+<td>0.30–0.60</td>
+</tr>
+<tr class="odd">
+<td>Schwache/nutzlose</td>
+<td>sensor_6, _20, _21, _15</td>
+<td>|r| &lt; 0.10</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Multikollineare Gruppen (nur je 1 behalten):</strong></p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Paar</th>
+<th>Korrelation untereinander</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>sensor_7 ↔︎ sensor_12</td>
+<td>r = 0.99</td>
+</tr>
+<tr class="even">
+<td>sensor_8 ↔︎ sensor_13</td>
+<td>r = 0.96</td>
+</tr>
+<tr class="odd">
+<td>sensor_9 ↔︎ sensor_14</td>
+<td>r = 0.95</td>
+</tr>
+<tr class="even">
+<td>sensor_4 ↔︎ sensor_11</td>
+<td>r = 0.85</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Wichtiger Story-Punkt:</strong> sensor_7 hat einen visuell klaren, monotonen Abfall zum Ausfall (Abschnitt 2.2), aber nur eine mittlere Korrelation von r = −0.36. Das liegt daran, dass der Verlauf <strong>nicht-linear</strong> ist – lange flach, dann schneller Abfall am Ende. Die Pearson-Korrelation misst nur lineare Zusammenhänge und unterschätzt diesen Effekt systematisch. Das ist ein konkretes Argument warum ML-Modelle (Random Forest, XGBoost) der Survival Analysis überlegen sein können: sie erfassen diese Nicht-Linearitäten automatisch.</p>
+<hr>
+</section>
+<section id="verteilungs-checks-für-survival-analysis" class="level2">
+<h2 class="anchored" data-anchor-id="verteilungs-checks-für-survival-analysis">4. Verteilungs-Checks für Survival Analysis</h2>
+<p>Bevor Survival-Modelle angewendet werden, wird geprüft welche Verteilung die Engine-Lebensdauern am besten beschreibt. Der AIC (Akaike Information Criterion) vergleicht die Modellgüte – niedrigerer AIC bedeutet besserer Fit.</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>fit_w <span class="ot">&lt;-</span> <span class="fu">fitdist</span>(lifetimes<span class="sc">$</span>lifetime, <span class="st">"weibull"</span>)</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>fit_n <span class="ot">&lt;-</span> <span class="fu">fitdist</span>(lifetimes<span class="sc">$</span>lifetime, <span class="st">"norm"</span>)</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Q-Q-Plots</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a><span class="fu">qqcomp</span>(<span class="fu">list</span>(fit_w, fit_n),</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>       <span class="at">legendtext =</span> <span class="fu">c</span>(<span class="st">"Weibull"</span>, <span class="st">"Normal"</span>),</span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>       <span class="at">main =</span> <span class="st">"Q-Q-Plot: Lebensdauern"</span>)</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="01_eda_files/figure-html/unnamed-chunk-9-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">Weibull AIC:"</span>, <span class="fu">round</span>(fit_w<span class="sc">$</span>aic, <span class="dv">2</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Weibull AIC: 1177.08 </code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Normal  AIC:"</span>, <span class="fu">round</span>(fit_n<span class="sc">$</span>aic, <span class="dv">2</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Normal  AIC: 1178.77 </code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">Weibull Parameter:</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Weibull Parameter:</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"  Shape (β):"</span>, <span class="fu">round</span>(fit_w<span class="sc">$</span>estimate[<span class="st">"shape"</span>], <span class="dv">3</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>  Shape (β): 2.929 </code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"  Scale (η):"</span>, <span class="fu">round</span>(fit_w<span class="sc">$</span>estimate[<span class="st">"scale"</span>], <span class="dv">3</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>  Scale (η): 276.815 </code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">β &gt; 1 → Verschleißausfall (erwartet für Turbofan)</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+β &gt; 1 → Verschleißausfall (erwartet für Turbofan)</code></pre>
+</div>
+</div>
+<pre><code>Weibull AIC: 1177.08 
+Normal  AIC: 1178.77 
+
+Weibull Parameter:
+  Shape (β): 2.929 
+  Scale (η): 276.815 
+
+β &gt; 1 → Verschleißausfall (erwartet für Turbofan)</code></pre>
+<p><strong>Interpretation:</strong></p>
+<ul>
+<li><p><strong>AIC-Vergleich:</strong> Weibull (1177.08) gewinnt knapp gegen Normal (1178.77), Differenz 1.69. Eine Differenz unter ~2 gilt als kaum unterscheidbar – beide unimodalen Verteilungen passen wegen der Bimodalität nicht perfekt. Ehrliche Einordnung: keiner gewinnt klar.</p></li>
+<li><p><strong>Shape-Parameter β = 2.93 &gt; 1:</strong> Das ist die eigentlich wichtige Aussage. β &gt; 1 bedeutet die Ausfallrate <strong>steigt mit dem Alter</strong> – klassischer Verschleißausfall. Je älter die Engine, desto wahrscheinlicher fällt sie pro Zyklus aus. Das ist exakt das physikalisch erwartete Verhalten für ein mechanisches System wie einen Turbofan und rechtfertigt den Einsatz von Weibull-basierten Survival-Modellen.</p></li>
+<li><p><strong>Scale-Parameter η = 276.8:</strong> Die charakteristische Lebensdauer – der Zeitpunkt bei dem 63.2% aller Engines ausgefallen sind. Liegt plausibel oberhalb des Medians (220.5) wegen der rechtsschiefen Ausreißer-Gruppe.</p></li>
+</ul>
+<hr>
+</section>
+<section id="vif-check-multikollinearität" class="level2">
+<h2 class="anchored" data-anchor-id="vif-check-multikollinearität">5. VIF-Check (Multikollinearität)</h2>
+<section id="warum-vif" class="level3">
+<h3 class="anchored" data-anchor-id="warum-vif">Warum VIF?</h3>
+<p>Die Korrelationsmatrix hat <strong>Paare</strong> gezeigt (sensor_7/12 = 0.99 etc.). Der VIF (Variance Inflation Factor) ist stärker: er prüft ob ein Sensor durch eine <strong>Kombination</strong> aller anderen fast vollständig vorhergesagt werden kann – auch wenn er mit keinem einzelnen hoch korreliert.</p>
+<p><span class="math display">\[VIF_j = \frac{1}{1 - R^2_j}\]</span></p>
+<p>Wobei <span class="math inline">\(R^2_j\)</span> aus einer Regression von Sensor j auf alle anderen Sensoren stammt. <strong>Faustregel:</strong> VIF &lt; 5 unbedenklich, VIF 5–10 problematisch, VIF &gt; 10 → raus.</p>
+<p><strong>Vorgehen:</strong> Immer nur den Sensor mit dem höchsten VIF entfernen, dann neu berechnen. Nie mehrere auf einmal – sie beeinflussen sich gegenseitig.</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>candidates <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"sensor_2"</span>, <span class="st">"sensor_3"</span>, <span class="st">"sensor_4"</span>, <span class="st">"sensor_6"</span>,</span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>                <span class="st">"sensor_7"</span>, <span class="st">"sensor_8"</span>, <span class="st">"sensor_9"</span>, <span class="st">"sensor_10"</span>,</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>                <span class="st">"sensor_11"</span>, <span class="st">"sensor_12"</span>, <span class="st">"sensor_13"</span>, <span class="st">"sensor_14"</span>,</span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>                <span class="st">"sensor_15"</span>, <span class="st">"sensor_17"</span>, <span class="st">"sensor_20"</span>, <span class="st">"sensor_21"</span>)</span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a>vif_data  <span class="ot">&lt;-</span> train <span class="sc">%&gt;%</span> dplyr<span class="sc">::</span><span class="fu">select</span>(<span class="fu">all_of</span>(candidates), RUL)</span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a>vif_model <span class="ot">&lt;-</span> <span class="fu">lm</span>(RUL <span class="sc">~</span> ., <span class="at">data =</span> vif_data)</span>
+<span id="cb32-8"><a href="#cb32-8" aria-hidden="true" tabindex="-1"></a>vif_results <span class="ot">&lt;-</span> <span class="fu">vif</span>(vif_model)</span>
+<span id="cb32-9"><a href="#cb32-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-10"><a href="#cb32-10" aria-hidden="true" tabindex="-1"></a>vif_df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">sensor =</span> <span class="fu">names</span>(vif_results), <span class="at">vif =</span> <span class="fu">round</span>(vif_results, <span class="dv">1</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb32-11"><a href="#cb32-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(vif))</span>
+<span id="cb32-12"><a href="#cb32-12" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(vif_df, <span class="at">row.names =</span> <span class="cn">FALSE</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>    sensor  vif
+ sensor_12 52.7
+  sensor_7 48.7
+  sensor_9 15.0
+  sensor_8 14.8
+ sensor_13 14.8
+ sensor_14 13.1
+ sensor_15  8.4
+ sensor_11  5.9
+ sensor_21  5.9
+ sensor_20  5.7
+  sensor_4  4.7
+ sensor_10  3.9
+ sensor_17  3.2
+  sensor_2  2.8
+  sensor_3  2.7
+  sensor_6  1.7</code></pre>
+</div>
+</div>
+<pre><code>    sensor  vif
+ sensor_12 52.7
+  sensor_7 48.7
+  sensor_9 15.0
+  sensor_8 14.8
+ sensor_13 14.8
+ sensor_14 13.1
+ sensor_15  8.4
+ sensor_11  5.9
+ sensor_21  5.9
+ sensor_20  5.7
+  sensor_4  4.7
+ sensor_10  3.9
+ sensor_17  3.2
+  sensor_2  2.8
+  sensor_3  2.7
+  sensor_6  1.7</code></pre>
+<p>sensor_12 (52.7) und sensor_7 (48.7) – extreme Multikollinearität, deckt sich mit r = 0.99 aus der Korrelationsmatrix. Iterativer Bereinigungsprozess:</p>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Iteration 1: sensor_12 raus (VIF 52.7)</span></span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>candidates_v2 <span class="ot">&lt;-</span> <span class="fu">setdiff</span>(candidates, <span class="st">"sensor_12"</span>)</span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a>vif2 <span class="ot">&lt;-</span> <span class="fu">vif</span>(<span class="fu">lm</span>(RUL <span class="sc">~</span> ., <span class="at">data =</span> train <span class="sc">%&gt;%</span> dplyr<span class="sc">::</span><span class="fu">select</span>(<span class="fu">all_of</span>(candidates_v2), RUL)))</span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a><span class="fu">data.frame</span>(<span class="at">sensor =</span> <span class="fu">names</span>(vif2), <span class="at">vif =</span> <span class="fu">round</span>(vif2, <span class="dv">1</span>)) <span class="sc">%&gt;%</span> <span class="fu">arrange</span>(<span class="fu">desc</span>(vif)) <span class="sc">%&gt;%</span> <span class="fu">print</span>(<span class="at">row.names =</span> <span class="cn">FALSE</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>    sensor  vif
+  sensor_7 17.9
+  sensor_9 14.9
+  sensor_8 14.8
+ sensor_13 14.8
+ sensor_14 13.1
+ sensor_15  8.1
+ sensor_11  5.8
+ sensor_21  5.7
+ sensor_20  5.6
+  sensor_4  4.7
+ sensor_10  3.9
+ sensor_17  3.2
+  sensor_2  2.8
+  sensor_3  2.7
+  sensor_6  1.7</code></pre>
+</div>
+</div>
+<pre><code>    sensor  vif
+  sensor_7 17.9    ← sensor_7 von 48.7 auf 17.9 gesunken (waren fast identisch)
+  sensor_9 14.9
+  sensor_8 14.8
+ sensor_13 14.8
+ sensor_14 13.1
+ sensor_15  8.1
+ [...]</code></pre>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Iteration 2: sensor_7 raus (VIF 17.9)</span></span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a>candidates_v3 <span class="ot">&lt;-</span> <span class="fu">setdiff</span>(candidates_v2, <span class="st">"sensor_7"</span>)</span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a>vif3 <span class="ot">&lt;-</span> <span class="fu">vif</span>(<span class="fu">lm</span>(RUL <span class="sc">~</span> ., <span class="at">data =</span> train <span class="sc">%&gt;%</span> dplyr<span class="sc">::</span><span class="fu">select</span>(<span class="fu">all_of</span>(candidates_v3), RUL)))</span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a><span class="fu">data.frame</span>(<span class="at">sensor =</span> <span class="fu">names</span>(vif3), <span class="at">vif =</span> <span class="fu">round</span>(vif3, <span class="dv">1</span>)) <span class="sc">%&gt;%</span> <span class="fu">arrange</span>(<span class="fu">desc</span>(vif)) <span class="sc">%&gt;%</span> <span class="fu">print</span>(<span class="at">row.names =</span> <span class="cn">FALSE</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>    sensor  vif
+  sensor_9 14.9
+  sensor_8 14.7
+ sensor_13 14.7
+ sensor_14 13.1
+ sensor_15  6.2
+ sensor_11  5.7
+ sensor_21  4.8
+ sensor_20  4.7
+  sensor_4  4.6
+ sensor_10  3.4
+ sensor_17  3.2
+  sensor_2  2.8
+  sensor_3  2.7
+  sensor_6  1.7</code></pre>
+</div>
+</div>
+<pre><code>    sensor  vif
+  sensor_9 14.9    ← sensor_8/13-Gruppe (r=0.96) + sensor_9/14-Gruppe (r=0.95)
+  sensor_8 14.7
+ sensor_13 14.7
+ sensor_14 13.1
+ [...]</code></pre>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Iteration 3: sensor_9 raus (VIF 14.9)</span></span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a>candidates_v4 <span class="ot">&lt;-</span> <span class="fu">setdiff</span>(candidates_v3, <span class="st">"sensor_9"</span>)</span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a>vif4 <span class="ot">&lt;-</span> <span class="fu">vif</span>(<span class="fu">lm</span>(RUL <span class="sc">~</span> ., <span class="at">data =</span> train <span class="sc">%&gt;%</span> dplyr<span class="sc">::</span><span class="fu">select</span>(<span class="fu">all_of</span>(candidates_v4), RUL)))</span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a><span class="fu">data.frame</span>(<span class="at">sensor =</span> <span class="fu">names</span>(vif4), <span class="at">vif =</span> <span class="fu">round</span>(vif4, <span class="dv">1</span>)) <span class="sc">%&gt;%</span> <span class="fu">arrange</span>(<span class="fu">desc</span>(vif)) <span class="sc">%&gt;%</span> <span class="fu">print</span>(<span class="at">row.names =</span> <span class="cn">FALSE</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>    sensor  vif
+  sensor_8 14.7
+ sensor_13 14.7
+ sensor_15  6.2
+ sensor_11  5.6
+ sensor_21  4.8
+ sensor_20  4.7
+  sensor_4  4.6
+ sensor_10  3.4
+ sensor_17  3.2
+  sensor_2  2.8
+  sensor_3  2.7
+ sensor_14  1.8
+  sensor_6  1.7</code></pre>
+</div>
+</div>
+<pre><code>    sensor  vif
+  sensor_8 14.7    ← sensor_8 und sensor_13 jetzt identisch → einen behalten
+ sensor_13 14.7
+ [...]</code></pre>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb44"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Iteration 4: sensor_13 raus (VIF 14.7, redundant mit sensor_8)</span></span>
+<span id="cb44-2"><a href="#cb44-2" aria-hidden="true" tabindex="-1"></a><span class="co"># sensor_8 behalten: RUL-Korrelation minimal stärker (-0.634 vs -0.635)</span></span>
+<span id="cb44-3"><a href="#cb44-3" aria-hidden="true" tabindex="-1"></a>candidates_v5 <span class="ot">&lt;-</span> <span class="fu">setdiff</span>(candidates_v4, <span class="st">"sensor_13"</span>)</span>
+<span id="cb44-4"><a href="#cb44-4" aria-hidden="true" tabindex="-1"></a>vif5 <span class="ot">&lt;-</span> <span class="fu">vif</span>(<span class="fu">lm</span>(RUL <span class="sc">~</span> ., <span class="at">data =</span> train <span class="sc">%&gt;%</span> dplyr<span class="sc">::</span><span class="fu">select</span>(<span class="fu">all_of</span>(candidates_v5), RUL)))</span>
+<span id="cb44-5"><a href="#cb44-5" aria-hidden="true" tabindex="-1"></a><span class="fu">data.frame</span>(<span class="at">sensor =</span> <span class="fu">names</span>(vif5), <span class="at">vif =</span> <span class="fu">round</span>(vif5, <span class="dv">1</span>)) <span class="sc">%&gt;%</span> <span class="fu">arrange</span>(<span class="fu">desc</span>(vif)) <span class="sc">%&gt;%</span> <span class="fu">print</span>(<span class="at">row.names =</span> <span class="cn">FALSE</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>    sensor vif
+ sensor_15 6.2
+ sensor_11 5.6
+ sensor_21 4.8
+ sensor_20 4.7
+  sensor_4 4.6
+ sensor_10 3.4
+ sensor_17 3.2
+  sensor_8 3.1
+  sensor_2 2.8
+  sensor_3 2.7
+ sensor_14 1.8
+  sensor_6 1.7</code></pre>
+</div>
+</div>
+<pre><code>    sensor vif
+ sensor_15 6.2    ← alle VIFs unter 10, Prozess abgeschlossen
+ sensor_11 5.6
+ sensor_21 4.8
+ sensor_20 4.7
+  sensor_4 4.6
+ sensor_10 3.4
+ sensor_17 3.2
+  sensor_8 3.1
+  sensor_2 2.8
+  sensor_3 2.7
+ sensor_14 1.8
+  sensor_6 1.7</code></pre>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Finale Feature-Liste</span></span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a>final_sensors <span class="ot">&lt;-</span> candidates_v5</span>
+<span id="cb47-3"><a href="#cb47-3" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Rausgeflogen (VIF &gt; 10):</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Rausgeflogen (VIF &gt; 10):</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb49"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">" sensor_12 (VIF 52.7) – redundant mit sensor_7</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code> sensor_12 (VIF 52.7) – redundant mit sensor_7</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">" sensor_7  (VIF 17.9) – redundant mit sensor_12</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code> sensor_7  (VIF 17.9) – redundant mit sensor_12</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb53"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">" sensor_9  (VIF 14.9) – redundant mit sensor_14</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code> sensor_9  (VIF 14.9) – redundant mit sensor_14</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb55"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">" sensor_13 (VIF 14.7) – redundant mit sensor_8</span><span class="sc">\n\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code> sensor_13 (VIF 14.7) – redundant mit sensor_8</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb57"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Finale Sensoren für Modellierung ("</span>, <span class="fu">length</span>(final_sensors), <span class="st">"):</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Finale Sensoren für Modellierung ( 12 ):</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb59"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(final_sensors)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code> [1] "sensor_2"  "sensor_3"  "sensor_4"  "sensor_6"  "sensor_8"  "sensor_10"
+ [7] "sensor_11" "sensor_14" "sensor_15" "sensor_17" "sensor_20" "sensor_21"</code></pre>
+</div>
+</div>
+<pre><code>Rausgeflogen (VIF &gt; 10):
+ sensor_12 (VIF 52.7) – redundant mit sensor_7
+ sensor_7  (VIF 17.9) – redundant mit sensor_12
+ sensor_9  (VIF 14.9) – redundant mit sensor_14
+ sensor_13 (VIF 14.7) – redundant mit sensor_8
+
+Finale Sensoren für Modellierung ( 12 ):
+ [1] "sensor_2"  "sensor_3"  "sensor_4"  "sensor_6"  "sensor_8"  "sensor_10"
+ [7] "sensor_11" "sensor_14" "sensor_15" "sensor_17" "sensor_20" "sensor_21"</code></pre>
+<hr>
+</section>
+</section>
+<section id="eda-zusammenfassung" class="level2">
+<h2 class="anchored" data-anchor-id="eda-zusammenfassung">6. EDA-Zusammenfassung</h2>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb62"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb62-1"><a href="#cb62-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"=== EDA-Zusammenfassung FD003 ===</span><span class="sc">\n\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>=== EDA-Zusammenfassung FD003 ===</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb64"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb64-1"><a href="#cb64-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"1. LEBENSDAUERN:</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>1. LEBENSDAUERN:</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb66"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb66-1"><a href="#cb66-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"   Mittelwert:"</span>, <span class="fu">round</span>(<span class="fu">mean</span>(lifetimes<span class="sc">$</span>lifetime), <span class="dv">1</span>), <span class="st">"Zyklen</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>   Mittelwert: 247.2 Zyklen</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb68"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb68-1"><a href="#cb68-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"   Median:"</span>, <span class="fu">round</span>(<span class="fu">median</span>(lifetimes<span class="sc">$</span>lifetime), <span class="dv">1</span>), <span class="st">"Zyklen</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>   Median: 220.5 Zyklen</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb70"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb70-1"><a href="#cb70-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"   SD:"</span>, <span class="fu">round</span>(<span class="fu">sd</span>(lifetimes<span class="sc">$</span>lifetime), <span class="dv">1</span>), <span class="st">"Zyklen</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>   SD: 86.5 Zyklen</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb72"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb72-1"><a href="#cb72-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"   → Bimodale Verteilung deutet auf 2 Fault Modes hin</span><span class="sc">\n\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>   → Bimodale Verteilung deutet auf 2 Fault Modes hin</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb74"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb74-1"><a href="#cb74-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"2. SENSOREN:</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>2. SENSOREN:</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb76"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb76-1"><a href="#cb76-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"   Gesamt:"</span>, <span class="dv">21</span>, <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>   Gesamt: 21 </code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb78"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb78-1"><a href="#cb78-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"   Gedroppt (konstant):"</span>, <span class="dv">21</span> <span class="sc">-</span> <span class="fu">length</span>(sensor_cols), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>   Gedroppt (konstant): 5 </code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb80"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb80-1"><a href="#cb80-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"   Verwendet:"</span>, <span class="fu">length</span>(sensor_cols), <span class="st">"</span><span class="sc">\n\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>   Verwendet: 16 </code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb82"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb82-1"><a href="#cb82-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"3. WEIBULL vs. NORMAL:</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>3. WEIBULL vs. NORMAL:</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb84"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb84-1"><a href="#cb84-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"   Weibull AIC:"</span>, <span class="fu">round</span>(fit_w<span class="sc">$</span>aic, <span class="dv">2</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>   Weibull AIC: 1177.08 </code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb86"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb86-1"><a href="#cb86-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"   Normal  AIC:"</span>, <span class="fu">round</span>(fit_n<span class="sc">$</span>aic, <span class="dv">2</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>   Normal  AIC: 1178.77 </code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb88"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb88-1"><a href="#cb88-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"   Besserer Fit:"</span>, </span>
+<span id="cb88-2"><a href="#cb88-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ifelse</span>(fit_w<span class="sc">$</span>aic <span class="sc">&lt;</span> fit_n<span class="sc">$</span>aic, <span class="st">"Weibull ✓"</span>, <span class="st">"Normal"</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>   Besserer Fit: Weibull ✓ </code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb90"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb90-1"><a href="#cb90-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"   Shape β ="</span>, <span class="fu">round</span>(fit_w<span class="sc">$</span>estimate[<span class="st">"shape"</span>], <span class="dv">3</span>), <span class="st">"→ Verschleißausfall</span><span class="sc">\n\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>   Shape β = 2.929 → Verschleißausfall</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb92"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb92-1"><a href="#cb92-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"4. TOP-3 SENSOREN (Korrelation mit RUL):</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>4. TOP-3 SENSOREN (Korrelation mit RUL):</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb94"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb94-1"><a href="#cb94-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">head</span>(rul_corr[, <span class="fu">c</span>(<span class="st">"sensor"</span>, <span class="st">"correlation"</span>)], <span class="dv">3</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>     sensor correlation
+1 sensor_11  -0.8045324
+2  sensor_4  -0.7700509
+3 sensor_17  -0.7257510</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb96"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb96-1"><a href="#cb96-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb97"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb97-1"><a href="#cb97-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"5. VIF-BEREINIGUNG:</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>5. VIF-BEREINIGUNG:</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb99"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb99-1"><a href="#cb99-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"   4 Sensoren rausgeflogen (sensor_12, _7, _9, _13)</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>   4 Sensoren rausgeflogen (sensor_12, _7, _9, _13)</code></pre>
+</div>
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb101"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb101-1"><a href="#cb101-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"   12 finale Sensoren für Modellierung</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>   12 finale Sensoren für Modellierung</code></pre>
+</div>
+</div>
+<pre><code>=== EDA-Zusammenfassung FD003 ===
+
+1. LEBENSDAUERN:
+   Mittelwert: 247.2 Zyklen
+   Median: 220.5 Zyklen
+   SD: 86.5 Zyklen
+   → Bimodale Verteilung deutet auf 2 Fault Modes hin
+
+2. SENSOREN:
+   Gesamt: 21 
+   Gedroppt (konstant): 5 
+   Verwendet: 16 
+
+3. WEIBULL vs. NORMAL:
+   Weibull AIC: 1177.08 
+   Normal  AIC: 1178.77 
+   Besserer Fit: Weibull ✓ 
+   Shape β = 2.929 → Verschleißausfall
+
+4. TOP-3 SENSOREN (Korrelation mit RUL):
+     sensor correlation
+1 sensor_11  -0.8045324
+2  sensor_4  -0.7700509
+3 sensor_17  -0.7257510
+
+5. VIF-BEREINIGUNG:
+   4 Sensoren rausgeflogen (sensor_12, _7, _9, _13)
+   12 finale Sensoren für Modellierung</code></pre>
+<hr>
+<p><strong>Nächste Schritte:</strong></p>
+<ul>
+<li><code>02_preprocessing.qmd</code> – Feature Engineering (Rolling Statistics), Normalisierung, Export für Python</li>
+<li><code>03_survival_kaplan_meier.qmd</code> – Kaplan-Meier-Kurven mit Subgruppen-Vergleich (kurze vs.&nbsp;lange Lebensdauer) + Log-Rank-Test</li>
+<li><code>04_survival_weibull.qmd</code> – Weibull AFT-Modell mit Sensor-Covariaten</li>
+<li><code>05_survival_cox.qmd</code> – Cox PH, Annahmentest (cox.zph), Brücke zum ML-Teil</li>
+</ul>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

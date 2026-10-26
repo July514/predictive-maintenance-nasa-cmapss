@@ -1,0 +1,50 @@
+[project]
+name = "predictive-maintenance-ml"
+version = "0.1.0"
+description = "NASA CMAPSS FD003 – ML-Teil: RUL-Regression mit RF, XGBoost, SVR und BiLSTM + Attention"
+requires-python = ">=3.12"
+
+dependencies = [
+    # Core
+    "numpy>=2.0",
+    "pandas>=2.2",
+    "scipy>=1.13",
+    # ML – alles aus Kursinhalt
+    "scikit-learn>=1.5",        # RF Regressor, SVR, GridSearchCV, Metriken
+    "xgboost>=2.0",             # Gradient Boosting
+    # Optional: Survival ML (Bonus)
+    # "scikit-survival>=0.22",  # Auskommentiert bis gebraucht
+    # Visualisierung
+    "matplotlib>=3.9",
+    "seaborn>=0.13",
+    "plotly>=5.22",
+    # Notebooks
+    "jupyter>=1.0",
+    "ipykernel>=6.29",
+    # Optional Dashboard
+    "streamlit>=1.35",
+    # Konfiguration
+    "python-dotenv>=1.0",
+    "tensorflow>=2.21.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.2",
+    "ruff>=0.4",
+    "mypy>=1.10",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

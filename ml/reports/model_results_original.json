@@ -1,0 +1,31 @@
+{
+  "Random Forest": {
+    "Model": "Random Forest",
+    "RMSE": 20.72,
+    "MAE": 15.4,
+    "R\u00b2": 0.749,
+    "NASA Score": 2051.3
+  },
+  "XGBoost": {
+    "Model": "XGBoost",
+    "RMSE": 20.84,
+    "MAE": 15.35,
+    "R\u00b2": 0.746,
+    "NASA Score": 1940.5
+  },
+  "SVR (RBF)": {
+    "Model": "SVR (RBF)",
+    "RMSE": 21.12,
+    "MAE": 15.73,
+    "R\u00b2": 0.74,
+    "NASA Score": 1809.1
+  },
+  "BiLSTM + Attention": {
+    "Model": "BiLSTM + Attention",
+    "RMSE": 13.33,
+    "MAE": 10.05,
+    "R\u00b2": 0.896,
+    "NASA Score": 265.4
+  },
+  "_quelle": "Originallauf (Juni 2026, Windows). RF/XGBoost/SVR aus ml/reports/model_results.json dieses Laufs; BiLSTM aus Notebook 08 (reproduziert exakt aus lstm_best.keras)."
+}

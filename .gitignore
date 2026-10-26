@@ -1,0 +1,51 @@
+.github
+
+# ── Daten (niemals committen!) ──────────────────────────────────────
+data/raw/
+
+# ── Python ──────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+.ipynb_checkpoints/
+
+# ── R ───────────────────────────────────────────────────────────────
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+
+# renv: renv/ Ordner wird NICHT committed (nur renv.lock)
+renv/library/
+renv/python/
+
+# ── Environment ──────────────────────────────────────────────────────
+.env
+
+# ── OS ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── VSCode ───────────────────────────────────────────────────────────
+# Team-spezifisch, lieber nicht committen
+.vscode/settings.json
+# Ausnahme: .vscode/extensions.json kann committed werden (empfohlen)
+
+# ── Outputs ──────────────────────────────────────────────────────────
+# Hinweis: Kommentare immer in eine eigene Zeile. Ein "# ..." hinter einem Muster
+# wird Teil des Musters, die Regel greift dann nicht.
+# PDF- und Office-Dokumente bleiben lokal und werden nicht versioniert
+*.pdf
+*.docx
+*.pptx
+# Generierte HTML-Reports nicht committen ...
+*.html
+# ... außer den gerenderten Quarto-Berichten der Statistik (bewusst eingecheckt,
+# damit die Analysen ohne R-Installation lesbar sind)
+!statistik/analysis/*.html
+
+ml/.venv
+statistik/renv/
+ml/.venv-mac/

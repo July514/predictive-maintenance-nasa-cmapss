@@ -1,0 +1,451 @@
+---
+title: "02 – Preprocessing: Feature Engineering & Export"
+author: "Julian Haar"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    theme: flatly
+execute:
+  warning: false
+  message: false
+---
+
+## Ziel dieses Notebooks
+
+Dieses Notebook überführt die Rohdaten aus der EDA in eine ML-fähige Form. Die drei Kernschritte:
+
+1. **Feature-Auswahl** – Redundante Sensoren auf Basis des VIF-Checks entfernen
+2. **Feature Engineering** – Rolling Statistics (Mittelwert + SD) zur Rauschunterdrückung
+3. **Normalisierung + Export** – Skalierung auf [0,1] und Export als CSV für die Python-Pipeline
+
+Die Ausgangslage: 21 Sensoren, davon 5 konstant (vom Loader entfernt), 4 multikollinear (VIF > 10). Verbleiben: **12 finale Sensoren**.
+
+---
+
+## Setup
+
+```{r setup-dir, include=FALSE}
+knitr::opts_knit$set(root.dir = normalizePath(".."))
+```
+
+```{r}
+
+# renv mit absolutem Pfad aktivieren (relativ zur qmd-Datei, nicht root.dir)
+renv_path <- file.path(dirname(knitr::current_input(dir = TRUE)), 
+                       "..", "renv", "activate.R")
+source(renv_path)
+source("shiny-app/R/data_loader.R")
+
+library(tidyverse)
+library(conflicted)
+library(jsonlite)
+conflict_prefer("select", "dplyr")
+conflict_prefer("filter", "dplyr")
+
+train_raw <- load_train_fd003(base_path = "../data/raw/CMaps")
+
+# Komplette Testverläufe für Rolling Statistics (nicht slice_tail!)
+test_full <- load_test_fd003_full(base_path = "../data/raw/CMaps")
+
+# Wahre RUL-Labels (eine pro Test-Engine) für den Export
+rul_true <- read_table(
+  "../data/raw/CMaps/RUL_FD003.txt",
+  col_names = c("RUL_true", "dummy"),
+  col_types = cols(RUL_true = col_double(), dummy = col_skip()),
+  show_col_types = FALSE
+)
+
+cat("Training:", nrow(train_raw), "Zeilen,", n_distinct(train_raw$unit_number), "Engines\n")
+cat("Test:    ", nrow(test_full),  "Zeilen,", n_distinct(test_full$unit_number),  "Engines (komplette Verläufe)\n")
+```
+
+```
+Training: 24720 Zeilen, 100 Engines
+Test:     16596 Zeilen, 100 Engines (komplette Verläufe)
+```
+
+**Wichtig:** Für die Rolling Statistics werden die **kompletten Testverläufe** benötigt (`load_test_fd003_full`), nicht die bereits auf die letzte Zeile reduzierten Daten. Rolling Statistics auf einer einzelnen Zeile ergeben keinen Sinn. Erst nach der Berechnung wird auf die letzte Zeile pro Engine reduziert (Abschnitt 4).
+
+---
+
+## 1. Finale Feature-Auswahl (Ergebnis VIF-Check aus EDA)
+
+Der iterative VIF-Check aus `01_eda.qmd` hat vier Sensoren als multikollinear identifiziert und entfernt. Der VIF (Variance Inflation Factor) misst wie stark ein Sensor durch eine Kombination aller anderen vorhergesagt werden kann – Faustregel: VIF > 10 = problematisch.
+
+| Sensor | VIF | Redundant mit | Korrelation |
+|---|---|---|---|
+| sensor_12 | 52.7 | sensor_7 | r = 0.99 |
+| sensor_7  | 17.9 | sensor_12 | r = 0.99 |
+| sensor_9  | 14.9 | sensor_14 | r = 0.95 |
+| sensor_13 | 14.7 | sensor_8  | r = 0.96 |
+
+Der Prozess war iterativ: immer nur den Sensor mit dem höchsten VIF entfernen, dann neu berechnen. Mehrere auf einmal entfernen kann zu falschen Entscheidungen führen, weil Sensoren sich gegenseitig beeinflussen.
+
+```{r}
+# Finale Sensor-Liste (12 Sensoren, alle VIF < 10)
+final_sensors <- c("sensor_2",  "sensor_3",  "sensor_4",  "sensor_6",
+                   "sensor_8",  "sensor_10", "sensor_11", "sensor_14",
+                   "sensor_15", "sensor_17", "sensor_20", "sensor_21")
+
+cat("Finale Sensoren:", length(final_sensors), "\n")
+print(final_sensors)
+```
+
+```
+Finale Sensoren: 12 
+ [1] "sensor_2"  "sensor_3"  "sensor_4"  "sensor_6"  "sensor_8"  "sensor_10"
+ [7] "sensor_11" "sensor_14" "sensor_15" "sensor_17" "sensor_20" "sensor_21"
+```
+
+---
+
+## 2. Rolling Statistics (Rauschunterdrückung)
+
+### Warum Rolling Statistics?
+
+Die Rohdaten sind verrauscht – einzelne Zyklen schwanken stark um den eigentlichen Trend, ohne dass das echte Degradation wäre. Ein Modell das auf Rohdaten trainiert wird, lernt auch dieses Rauschen mit.
+
+Wir berechnen für jeden der 12 finalen Sensoren:
+
+- **Gleitender Mittelwert (window = 5):** Glättet kurzfristiges Rauschen, macht den Degradationstrend stabiler sichtbar
+- **Gleitende Standardabweichung (window = 5):** Misst lokale Volatilität – steigt bei fortschreitender Degradation oft an, auch wenn der Mittelwert noch konstant wirkt. Damit ein eigenes informatives Signal.
+
+Das Fenster von 5 Zyklen ist ein Kompromiss: groß genug um Rauschen zu glätten, klein genug um schnelle Degradation am Ende der Lebensdauer nicht zu verschmieren.
+
+```{r}
+rolling_features <- function(df, sensors, window = 5) {
+  df %>%
+    group_by(unit_number) %>%
+    arrange(time_in_cycles) %>%
+    mutate(
+      across(
+        all_of(sensors),
+        list(
+          roll_mean = ~ zoo::rollmean(.x, k = window, fill = NA, align = "right"),
+          roll_sd   = ~ zoo::rollapply(.x, width = window, FUN = sd, fill = NA, align = "right")
+        ),
+        .names = "{.col}_{.fn}"
+      )
+    ) %>%
+    ungroup()
+}
+
+# Auf Training und Test (komplette Verläufe) anwenden
+train_rolled <- rolling_features(train_raw,  final_sensors, window = 5)
+test_rolled  <- rolling_features(test_full,  final_sensors, window = 5)
+
+cat("Neue Spalten durch Rolling Statistics:", 
+    length(final_sensors) * 2, "(", length(final_sensors), "× mean + sd)\n")
+cat("Gesamtspalten Training:", ncol(train_rolled), "\n")
+```
+
+```
+Neue Spalten durch Rolling Statistics: 24 ( 12 × mean + sd)
+Gesamtspalten Training: 46
+```
+
+### Fehlende Werte durch Rolling Window
+
+Die ersten 4 Zeilen jeder Engine haben kein vollständiges 5-Zyklen-Fenster und erhalten daher `NA`. Das ist erwartet und kein Fehler.
+
+```{r}
+# NAs prüfen
+na_count <- train_rolled %>%
+  summarise(across(ends_with("_roll_mean"), ~sum(is.na(.)))) %>%
+  pivot_longer(everything(), names_to = "feature", values_to = "n_na")
+
+cat("NAs pro Rolling-Feature (Training):\n")
+cat("  Minimum:", min(na_count$n_na), "\n")
+cat("  Maximum:", max(na_count$n_na), "\n")
+cat("  → Je 4 NAs pro Engine × 100 Engines = 400 NAs erwartet\n")
+cat("  Tatsächlich:", max(na_count$n_na), "(", 
+    round(max(na_count$n_na)/nrow(train_rolled)*100, 1), "% der Daten)\n")
+```
+
+```
+NAs pro Rolling-Feature (Training):
+  Minimum: 400 
+  Maximum: 400 
+  → Je 4 NAs pro Engine × 100 Engines = 400 NAs erwartet
+  Tatsächlich: 400 ( 1.6 % der Daten)
+```
+
+**Strategie:** NAs bleiben für die Survival-Modelle (die arbeiten pro Engine, nicht pro Zeile). Für die ML-Modelle werden NAs in Python beim Laden gedroppt (`train.dropna()`) – Verlust nur 400 von 24.720 Zeilen (1.6%), vernachlässigbar.
+
+---
+
+## 3. Normalisierung
+
+ML-Modelle, besonders SVR, reagieren sensitiv auf unterschiedliche Skalierungen. Sensor_17 bewegt sich beispielsweise im Bereich 388–400, sensor_6 nur zwischen 21.60 und 21.61. Ohne Normalisierung interpretiert der Algorithmus größere Zahlen als wichtiger – obwohl es nur eine Frage der Einheit ist.
+
+Min-Max-Normalisierung skaliert alle Features auf [0,1], sodass nur die **relative Veränderung** zählt, nicht die absolute Größe.
+
+**Wichtig:** Normalisierungsparameter werden **ausschließlich aus den Trainingsdaten** berechnet und dann auf die Testdaten angewendet. Würde man die Testdaten einbeziehen, wüsste das Modell beim Training implizit etwas über die Test-Verteilung – das wäre Data Leakage und würde die Evaluation verfälschen.
+
+```{r}
+# Normalisierungs-Parameter aus Training berechnen
+feature_cols <- c(final_sensors,
+                  paste0(final_sensors, "_roll_mean"),
+                  paste0(final_sensors, "_roll_sd"))
+
+norm_params <- train_rolled %>%
+  summarise(across(all_of(feature_cols),
+                   list(min = ~min(.x, na.rm = TRUE),
+                        max = ~max(.x, na.rm = TRUE)),
+                   .names = "{.col}__{.fn}")) %>%
+  pivot_longer(everything(),
+               names_to  = c("feature", "stat"),
+               names_sep = "__") %>%
+  pivot_wider(names_from = stat, values_from = value)
+
+# Normalisierungsfunktion
+normalize_features <- function(df, params) {
+  for (feat in params$feature) {
+    if (feat %in% names(df)) {
+      min_val <- params$min[params$feature == feat]
+      max_val <- params$max[params$feature == feat]
+      range   <- max_val - min_val
+      if (range > 0) {
+        df[[paste0(feat, "_norm")]] <- (df[[feat]] - min_val) / range
+      } else {
+        df[[paste0(feat, "_norm")]] <- 0
+      }
+    }
+  }
+  df
+}
+
+train_norm <- normalize_features(train_rolled, norm_params)
+test_norm  <- normalize_features(test_rolled,  norm_params)
+
+cat("Normalisierte Features hinzugefügt:", nrow(norm_params), "\n")
+```
+
+```
+Normalisierte Features hinzugefügt: 36
+```
+
+36 normalisierte Features: 12 Rohsensoren + 12 Rolling Mean + 12 Rolling SD.
+
+---
+
+## 4. Finale Datensätze zusammenstellen
+
+```{r}
+# Basis-Spalten + finale Sensoren + Rolling Features (normalisiert)
+base_cols     <- c("unit_number", "time_in_cycles", "os_1", "os_2", "os_3")
+norm_cols     <- paste0(feature_cols, "_norm")
+rolling_raw   <- c(paste0(final_sensors, "_roll_mean"),
+                   paste0(final_sensors, "_roll_sd"))
+
+# Training: mit RUL (Zielvariable)
+train_export <- train_norm %>%
+  select(all_of(c(base_cols, final_sensors, rolling_raw, norm_cols, "RUL"))) %>%
+  arrange(unit_number, time_in_cycles)
+
+# Test: letzte Zeile pro Engine (das ist der Vorhersage-Zeitpunkt)
+# + wahre RUL aus RUL_FD003.txt anhängen
+test_last <- test_norm %>%
+  group_by(unit_number) %>%
+  slice_tail(n = 1) %>%
+  ungroup()
+
+test_export <- test_last %>%
+  select(all_of(c(base_cols, final_sensors, rolling_raw, norm_cols))) %>%
+  bind_cols(dplyr::select(rul_true, RUL_true)) %>%
+  arrange(unit_number)
+
+cat("Training Export:", nrow(train_export), "Zeilen,", ncol(train_export), "Spalten\n")
+cat("Test Export:    ", nrow(test_export),  "Zeilen,", ncol(test_export),  "Spalten\n")
+```
+
+```
+Training Export: 24720 Zeilen, 78 Spalten
+Test Export:     100 Zeilen, 78 Spalten
+```
+
+**Spalten-Aufschlüsselung (78 gesamt):**
+
+| Gruppe | Anzahl | Inhalt |
+|---|---|---|
+| Basis | 5 | unit_number, time_in_cycles, os_1–3 |
+| Rohsensoren | 12 | sensor_2, _3, _4, _6, _8, _10, _11, _14, _15, _17, _20, _21 |
+| Rolling Mean | 12 | sensor_*_roll_mean |
+| Rolling SD | 12 | sensor_*_roll_sd |
+| Normalisiert | 36 | sensor_*_norm, *_roll_mean_norm, *_roll_sd_norm |
+| Zielvariable | 1 | RUL (Training) / RUL_true (Test) |
+
+**Warum für Test nur die letzte Zeile?** In der Realität kennt man bei einer laufenden Maschine nur den aktuellen Zustand, nicht die Zukunft. Der Evaluierungszeitpunkt ist der letzte bekannte Messzeitpunkt – genau das bildet `slice_tail(n = 1)` ab.
+
+---
+
+## 5. Export
+
+```{r}
+# Ordner anlegen falls nicht vorhanden
+dir.create("../data/processed", recursive = TRUE, showWarnings = FALSE)
+
+# CSVs schreiben
+write_csv(train_export, "../data/processed/train.csv")
+write_csv(test_export,  "../data/processed/test.csv")
+
+cat("Gespeichert:\n")
+cat("  ../data/processed/train.csv\n")
+cat("  ../data/processed/test.csv\n")
+```
+
+### feature_metadata.json
+
+Diese Datei dokumentiert alle Preprocessing-Entscheidungen und -Parameter. Python liest sie beim Laden der Daten, damit Training und Inference exakt dieselbe Pipeline reproduzieren können – insbesondere die Normalisierungsparameter (Min/Max aus dem Training).
+
+```{r}
+metadata <- list(
+  dataset      = "NASA CMAPSS FD003",
+  created      = format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
+  r_version    = R.version$version.string,
+
+  # Feature-Auswahl
+  final_sensors = final_sensors,
+  dropped_sensors = list(
+    list(sensor = "sensor_12", reason = "VIF 52.7, redundant mit sensor_7 (r=0.99)"),
+    list(sensor = "sensor_7",  reason = "VIF 17.9, redundant mit sensor_12"),
+    list(sensor = "sensor_9",  reason = "VIF 14.9, redundant mit sensor_14 (r=0.95)"),
+    list(sensor = "sensor_13", reason = "VIF 14.7, redundant mit sensor_8 (r=0.96)")
+  ),
+  constant_sensors = c("sensor_1", "sensor_5", "sensor_16", "sensor_18", "sensor_19"),
+
+  # Rolling Window Parameter
+  rolling_window = 5,
+  rolling_features = list(
+    mean = paste0(final_sensors, "_roll_mean"),
+    sd   = paste0(final_sensors, "_roll_sd")
+  ),
+
+  # Normalisierungs-Parameter (Min-Max aus Training)
+  normalization = list(
+    method = "min-max",
+    fitted_on = "train",
+    params = norm_params
+  ),
+
+  # RUL-Kappung
+  rul_cap = 125,
+  rul_method = "piecewise_linear",
+
+  # Spalten-Dokumentation
+  target_col     = "RUL",
+  id_cols        = c("unit_number", "time_in_cycles"),
+  feature_groups = list(
+    raw_sensors     = final_sensors,
+    rolling_mean    = paste0(final_sensors, "_roll_mean"),
+    rolling_sd      = paste0(final_sensors, "_roll_sd"),
+    normalized      = paste0(feature_cols, "_norm")
+  )
+)
+
+write_json(metadata, "../data/processed/feature_metadata.json",
+           pretty = TRUE, auto_unbox = TRUE)
+
+cat("Gespeichert: ../data/processed/feature_metadata.json\n")
+```
+
+---
+
+## 6. Verifikation
+
+```{r}
+# Prüfen ob alles stimmt
+train_check <- read_csv("../data/processed/train.csv", show_col_types = FALSE)
+test_check  <- read_csv("../data/processed/test.csv",  show_col_types = FALSE)
+
+cat("=== Verifikation ===\n\n")
+cat("train.csv:\n")
+cat("  Zeilen:", nrow(train_check), "\n")
+cat("  Spalten:", ncol(train_check), "\n")
+cat("  RUL-Bereich:", min(train_check$RUL), "–", max(train_check$RUL), "\n")
+cat("  NAs gesamt:", sum(is.na(train_check)), "\n\n")
+
+cat("test.csv:\n")
+cat("  Zeilen:", nrow(test_check), "(eine pro Engine)\n")
+cat("  Spalten:", ncol(test_check), "\n")
+cat("  RUL_true-Bereich:", min(test_check$RUL_true), "–", max(test_check$RUL_true), "\n")
+cat("  NAs gesamt:", sum(is.na(test_check)), "\n\n")
+
+cat("feature_metadata.json: gespeichert ✓\n")
+cat("\nAlle Dateien bereit für Python ML-Pipeline.\n")
+```
+
+```
+=== Verifikation ===
+
+train.csv:
+  Zeilen: 24720 
+  Spalten: 78 
+  RUL-Bereich: 0 – 125 
+  NAs gesamt: 19200 
+
+test.csv:
+  Zeilen: 100 (eine pro Engine)
+  Spalten: 78 
+  RUL_true-Bereich: 6 – 145 
+  NAs gesamt: 0 
+
+feature_metadata.json: gespeichert ✓
+
+Alle Dateien bereit für Python ML-Pipeline.
+```
+
+**Zu den NAs im Training (19.200):** Das sind ausschließlich die Rolling-Window-NAs – 400 Zeilen × 48 Rolling-Spalten (24 Raw + 24 Normalisiert). Kein unerwarteter fehlender Wert. Im Test sind keine NAs, weil dort nur die letzte Zeile pro Engine exportiert wird und die immer ein vollständiges Fenster hat.
+
+**RUL_true-Bereich 6–145:** Die wahren RUL-Werte im Test gehen leicht über 125 hinaus (bis 145). Das ist korrekt – der Cap von 125 gilt nur für die Trainingsdaten. Im Test sind die wahren Werte ungekürzt, damit die Evaluation vollständig ist.
+
+---
+
+## 7. Zusammenfassung Preprocessing
+
+```{r}
+cat("=== Preprocessing-Zusammenfassung ===\n\n")
+cat("Ausgangslage (nach EDA):\n")
+cat("  21 Sensoren gesamt\n")
+cat("   5 konstant gedroppt (data_loader)\n")
+cat("   4 VIF > 10 gedroppt (Multikollinearität)\n")
+cat("  12 finale Sensoren\n\n")
+
+cat("Feature Engineering:\n")
+cat("  + 12 Rolling Mean (window=5)\n")
+cat("  + 12 Rolling SD   (window=5)\n")
+cat("  + 36 normalisierte Features (Min-Max, auf Training)\n\n")
+
+cat("Exports:\n")
+cat("  ../data/processed/train.csv        → ML Training\n")
+cat("  ../data/processed/test.csv         → ML Evaluation\n")
+cat("  ../data/processed/feature_metadata.json → Reproduzierbarkeit\n")
+```
+
+```
+=== Preprocessing-Zusammenfassung ===
+
+Ausgangslage (nach EDA):
+  21 Sensoren gesamt
+   5 konstant gedroppt (data_loader)
+   4 VIF > 10 gedroppt (Multikollinearität)
+  12 finale Sensoren
+
+Feature Engineering:
+  + 12 Rolling Mean (window=5)
+  + 12 Rolling SD   (window=5)
+  + 36 normalisierte Features (Min-Max, auf Training)
+
+Exports:
+  ../data/processed/train.csv        → ML Training
+  ../data/processed/test.csv         → ML Evaluation
+  ../data/processed/feature_metadata.json → Reproduzierbarkeit
+```
+
+**Nächster Schritt:** 
+- `03_survival_kaplan_meier.qmd` – Kaplan-Meier-Kurven mit Subgruppen-Vergleich (kurze vs. lange Lebensdauer) und Log-Rank-Test zum statistischen Nachweis der zwei Fault Modes.
+- `04_survival_weibull.qmd` – Weibull AFT-Modell mit Sensor-Covariaten
+- `05_survival_cox.qmd` – Cox PH, Annahmentest (cox.zph), Brücke zum ML-Teil

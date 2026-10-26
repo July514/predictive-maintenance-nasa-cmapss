@@ -1,0 +1,7 @@
+Variante,Fenster,n Features,CV-RMSE,CV-RMSE SD,Test-RMSE,Test-RMSE SD,Test-MAE,NASA Score
+w5 (wie Notebook 03),5,36,17.46,1.01,21.15,0.2,15.32,2087.5
+w5 + time_in_cycles,5,37,15.7,0.91,18.62,0.05,14.37,681.17
+w30,30,36,18.1,0.7,20.05,0.22,14.38,1848.73
+w30 + Steigung,30,48,13.84,0.75,17.56,0.08,13.05,1031.57
+w50 + Steigung,50,48,12.39,0.62,16.28,0.16,11.6,1367.23
+w50 + Steigung + time_in_cycles,50,49,10.79,1.47,14.59,0.14,10.49,495.43

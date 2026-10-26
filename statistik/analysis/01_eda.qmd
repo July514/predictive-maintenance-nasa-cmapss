@@ -1,0 +1,543 @@
+---
+title: "01 – Explorative Datenanalyse: NASA CMAPSS FD003"
+author: "Julian Haar"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    theme: flatly
+  pdf:
+    toc: true
+execute:
+  warning: false
+  message: false
+---
+
+## Ziel dieses Notebooks
+
+Die explorative Datenanalyse (EDA) beantwortet drei Fragen bevor ein einziges Modell gebaut wird:
+
+1. **Wie sind die Engine-Lebensdauern verteilt?** Gibt es Subgruppen, die auf unterschiedliche Ausfallmechanismen hinweisen?
+2. **Welche Sensoren tragen Information über den Degradationszustand?** Welche sind redundant oder konstant?
+3. **Rechtfertigt die Datenstruktur den Survival-Analysis-Ansatz?** Passt Weibull oder Normal besser?
+
+Die Erkenntnisse fließen direkt in die Feature-Auswahl (`02_preprocessing.qmd`) und die Modellwahl (Survival Analysis + ML) ein.
+
+---
+
+## Setup
+
+```{r setup-dir, include=FALSE}
+knitr::opts_knit$set(root.dir = normalizePath(".."))
+```
+
+```{r}
+
+# renv mit absolutem Pfad aktivieren (relativ zur qmd-Datei, nicht root.dir)
+renv_path <- file.path(dirname(knitr::current_input(dir = TRUE)), 
+                       "..", "renv", "activate.R")
+source(renv_path)
+source("shiny-app/R/data_loader.R")
+
+
+library(tidyverse)
+library(ggcorrplot)
+library(patchwork)
+library(fitdistrplus)   # lädt MASS → maskiert dplyr::select!
+library(kableExtra)
+library(car)            # für VIF-Berechnung
+
+# Paket-Konflikte auflösen: dplyr-Funktionen haben Vorrang.
+# fitdistrplus zieht MASS rein, das select() und filter() überschreibt.
+library(conflicted)
+conflict_prefer("select", "dplyr")
+conflict_prefer("filter", "dplyr")
+
+source("shiny-app/R/data_loader.R")
+
+# Trainingsdaten laden (RUL bereits berechnet, konstante Sensoren gedroppt)
+train <- load_train_fd003(base_path = "../data/raw/CMaps")
+
+# Wahre RUL für Test-Engines
+rul <- read_table(
+  "../data/raw/CMaps/RUL_FD003.txt",
+  col_names  = c("RUL_true", "dummy"),
+  col_types  = cols(RUL_true = col_double(), dummy = col_skip()),
+  show_col_types = FALSE
+)
+
+cat("Trainingsdaten:", nrow(train), "Zeilen,", 
+    n_distinct(train$unit_number), "Engines\n")
+cat("Test-RUL Labels:", nrow(rul), "Engines\n")
+```
+
+```
+Trainingsdaten: 24720 Zeilen, 100 Engines
+Test-RUL Labels: 100 Engines
+```
+
+**Datensatz-Struktur:** Die Trainingsdaten enthalten **100 Engines** die jeweils bis zum Ausfall laufen. Jede Zeile ist ein Betriebszyklus. Die RUL (Remaining Useful Life) wurde als `max(time_in_cycles) - time_in_cycles` berechnet und auf 125 gekappt (Piecewise Linear). Die Test-RUL-Labels geben für jede Test-Engine an, wie viele Zyklen sie nach dem letzten bekannten Zeitpunkt noch gelaufen wäre.
+
+---
+
+## 1. Datensatz-Überblick
+
+```{r}
+glimpse(train)
+```
+
+```
+Rows: 24,720
+Columns: 22
+$ unit_number    <dbl> 1, 1, 1, 1, 1, ...
+$ time_in_cycles <dbl> 1, 2, 3, 4, 5, ...
+$ os_1           <dbl> -0.0005, 0.0008, ...
+$ os_2           <dbl> 4e-04, -3e-04, ...
+$ os_3           <dbl> 100, 100, 100, ...
+$ RUL            <dbl> 125, 125, 125, ...
+$ sensor_2       <dbl> 642.36, 642.50, ...
+$ sensor_3       <dbl> 1583.23, 1584.69, ...
+[... weitere Sensorspalten ...]
+```
+
+22 Spalten: 2 IDs (unit_number, time_in_cycles), 3 Operating Settings (os_1–3), 1 Zielvariable (RUL), 16 Sensoren (konstante bereits vom Loader entfernt).
+
+### 1.1 Lebensdauer-Verteilung
+
+```{r}
+lifetimes <- train %>%
+  group_by(unit_number) %>%
+  summarise(lifetime = max(time_in_cycles))
+
+summary(lifetimes$lifetime)
+
+p1 <- ggplot(lifetimes, aes(x = lifetime)) +
+  geom_histogram(binwidth = 20, fill = "#0d6efd", 
+                 alpha = 0.8, color = "white") +
+  geom_vline(xintercept = mean(lifetimes$lifetime), 
+             color = "red", linetype = "dashed") +
+  labs(title = "Verteilung der Engine-Lebensdauern (FD003)",
+       subtitle = sprintf("Mittelwert: %.1f | Median: %.1f | SD: %.1f",
+                           mean(lifetimes$lifetime),
+                           median(lifetimes$lifetime),
+                           sd(lifetimes$lifetime)),
+       x = "Lebensdauer (Zyklen)", y = "Anzahl Engines") +
+  theme_minimal()
+
+ggsave("reports/figures/lifetime_hist.png", p1, 
+       width = 8, height = 5, dpi = 150)
+p1
+```
+
+```
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  145.0   189.8   220.5   247.2   279.8   525.0
+```
+
+**Interpretation:** Die Verteilung zeigt zwei erkennbare Gruppen:
+
+- **Hauptgruppe (145–350 Zyklen):** Grossteil der Engines (~90 Stück), vermutlich ein Fault Mode
+- **Ausreißer-Gruppe (400–525 Zyklen):** ca. 10 Engines mit deutlich längerer Lebensdauer
+
+Der Gap zwischen ~350 und ~400 Zyklen ist kein Zufall: FD003 enthält zwei Fault Modes (**HPC Degradation** und **Fan Degradation**), die zu unterschiedlichen typischen Lebensdauern führen. Diese sind in den Rohdaten nicht gelabelt – die Bimodalität ist der erste statistische Hinweis auf ihre Existenz. Das motiviert später eine Kaplan-Meier-Analyse mit zwei Subgruppen und einen Log-Rank-Test als formalen Nachweis.
+
+---
+
+## 2. Sensor-Analyse
+
+### 2.1 Konstante Sensoren identifizieren
+
+Sensoren die sich über die gesamte Lebensdauer nicht verändern, tragen keine Information über den Degradationszustand und werden vor der Modellierung entfernt.
+
+```{r}
+sensor_cols <- grep("^sensor_", names(train), value = TRUE)
+
+sensor_sd <- train %>%
+  select(all_of(sensor_cols)) %>%
+  summarise(across(everything(), sd)) %>%
+  pivot_longer(everything(), names_to = "sensor", values_to = "sd") %>%
+  arrange(sd)
+
+# Visualisierung
+ggplot(sensor_sd, aes(x = reorder(sensor, sd), y = sd,
+                       fill = sd < 0.001)) +
+  geom_col() +
+  scale_fill_manual(values = c("FALSE" = "#0d6efd", "TRUE" = "#dc3545"),
+                    labels = c("verwendbar", "konstant → gedroppt")) +
+  labs(title = "Sensor-Standardabweichungen",
+       subtitle = "Rote Balken: nahezu konstant, bereits vom Loader entfernt",
+       x = "Sensor", y = "Standardabweichung", fill = "") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+**Hinweis:** Der `data_loader.R` entfernt bereits automatisch Sensoren mit SD < 0.001. Bei FD003 wurden folgende Sensoren gedroppt: `sensor_1, sensor_5, sensor_16, sensor_18, sensor_19`. Es verbleiben **16 informative Sensoren**.
+
+```{r}
+# Übersichtstabelle: Standardabweichung je Sensor
+sensor_sd %>%
+  mutate(status = if_else(sd < 0.001, "KONSTANT – gedroppt", "verwendet")) %>%
+  kable(digits = 4, caption = "Sensor-Standardabweichungen (FD003)") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+### 2.2 Sensor-Verläufe (Beispiel-Engines)
+
+Vier repräsentative Engines aus unterschiedlichen Lebensdauer-Bereichen zeigen wie sich die Sensoren über die Betriebszeit entwickeln.
+
+```{r}
+example_engines <- c(1, 25, 50, 80)
+example_sensors <- c("sensor_2", "sensor_7", "sensor_11", "sensor_15")
+
+plot_data <- train %>%
+  filter(unit_number %in% example_engines) %>%
+  select(unit_number, time_in_cycles, all_of(example_sensors)) %>%
+  pivot_longer(all_of(example_sensors), 
+               names_to = "sensor", values_to = "value")
+
+p2 <- ggplot(plot_data, aes(x = time_in_cycles, y = value,
+                             color = factor(unit_number))) +
+  geom_line(alpha = 0.8) +
+  facet_wrap(~sensor, scales = "free_y", ncol = 2) +
+  labs(title = "Sensor-Verläufe ausgewählter Engines (FD003)",
+       subtitle = "Engines 1, 25, 50, 80 – verschiedene Lebensdauern",
+       x = "Zyklus", y = "Sensorwert", color = "Engine") +
+  theme_minimal()
+
+ggsave("reports/figures/sensor_verlaeufe.png", p2,
+       width = 10, height = 6, dpi = 150)
+p2
+```
+
+**Interpretation:**
+
+- **sensor_2 und sensor_11** steigen monoton an – je näher der Ausfall, desto höher der Wert
+- **sensor_7** fällt monoton – klarer Degradationstrend in die entgegengesetzte Richtung
+- **sensor_15** zeigt einen steigenden Trend, aber mit stärkerem Rauschen
+- Alle Kurven **konvergieren auf einen gemeinsamen Failure-Threshold**, unabhängig davon wie lange die Engine gelaufen ist. Das ist die physikalische Signatur: die Maschine fällt aus wenn ein kritischer Degradationszustand erreicht ist – nur unterschiedlich schnell
+- Der Verlauf ist **nicht-linear**: lange flach, dann beschleunigt gegen Ende. Das wird in der Korrelationsanalyse relevant (Abschnitt 3)
+
+---
+
+## 3. Korrelationsanalyse
+
+Die Korrelationsanalyse beantwortet zwei Fragen: (1) Welche Sensoren hängen linear mit der RUL zusammen? (2) Welche Sensoren messen dasselbe – also sind redundant?
+
+```{r}
+corr_data <- train %>%
+  select(all_of(sensor_cols), RUL) %>%
+  cor(use = "complete.obs")
+
+p3 <- ggcorrplot(corr_data,
+           hc.order = TRUE,
+           type     = "lower",
+           lab      = TRUE,
+           lab_size = 2.5,
+           colors   = c("#dc3545", "white", "#198754")) +
+  labs(title = "Korrelationsmatrix: Sensoren + RUL (FD003)")
+
+ggsave("reports/figures/korrelationsmatrix.png", p3,
+       width = 10, height = 9, dpi = 150)
+p3
+```
+
+```{r}
+# Top-Korrelationen mit RUL
+rul_corr <- corr_data[, "RUL"] %>%
+  as.data.frame() %>%
+  rownames_to_column("sensor") %>%
+  rename(correlation = ".") %>%
+  filter(sensor != "RUL") %>%
+  mutate(abs_corr = abs(correlation)) %>%
+  arrange(desc(abs_corr))
+
+rul_corr %>%
+  kable(digits = 3, caption = "Sensor-Korrelationen mit RUL") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+**Ergebnisse:**
+
+| Gruppe | Sensoren | Korrelation mit RUL |
+|---|---|---|
+| Starke Prädiktoren | sensor_11, _4, _17, _3, _2, _9, _13, _8 | \|r\| > 0.60 |
+| Mittlere Prädiktoren | sensor_14, _10, _12, _7 | 0.30–0.60 |
+| Schwache/nutzlose | sensor_6, _20, _21, _15 | \|r\| < 0.10 |
+
+**Multikollineare Gruppen (nur je 1 behalten):**
+
+| Paar | Korrelation untereinander |
+|---|---|
+| sensor_7 ↔ sensor_12 | r = 0.99 |
+| sensor_8 ↔ sensor_13 | r = 0.96 |
+| sensor_9 ↔ sensor_14 | r = 0.95 |
+| sensor_4 ↔ sensor_11 | r = 0.85 |
+
+**Wichtiger Story-Punkt:** sensor_7 hat einen visuell klaren, monotonen Abfall zum Ausfall (Abschnitt 2.2), aber nur eine mittlere Korrelation von r = −0.36. Das liegt daran, dass der Verlauf **nicht-linear** ist – lange flach, dann schneller Abfall am Ende. Die Pearson-Korrelation misst nur lineare Zusammenhänge und unterschätzt diesen Effekt systematisch. Das ist ein konkretes Argument warum ML-Modelle (Random Forest, XGBoost) der Survival Analysis überlegen sein können: sie erfassen diese Nicht-Linearitäten automatisch.
+
+---
+
+## 4. Verteilungs-Checks für Survival Analysis
+
+Bevor Survival-Modelle angewendet werden, wird geprüft welche Verteilung die Engine-Lebensdauern am besten beschreibt. Der AIC (Akaike Information Criterion) vergleicht die Modellgüte – niedrigerer AIC bedeutet besserer Fit.
+
+```{r}
+fit_w <- fitdist(lifetimes$lifetime, "weibull")
+fit_n <- fitdist(lifetimes$lifetime, "norm")
+
+# Q-Q-Plots
+par(mfrow = c(1, 2))
+qqcomp(list(fit_w, fit_n),
+       legendtext = c("Weibull", "Normal"),
+       main = "Q-Q-Plot: Lebensdauern")
+par(mfrow = c(1, 1))
+
+cat("\nWeibull AIC:", round(fit_w$aic, 2), "\n")
+cat("Normal  AIC:", round(fit_n$aic, 2), "\n")
+cat("\nWeibull Parameter:\n")
+cat("  Shape (β):", round(fit_w$estimate["shape"], 3), "\n")
+cat("  Scale (η):", round(fit_w$estimate["scale"], 3), "\n")
+cat("\nβ > 1 → Verschleißausfall (erwartet für Turbofan)\n")
+```
+
+```
+Weibull AIC: 1177.08 
+Normal  AIC: 1178.77 
+
+Weibull Parameter:
+  Shape (β): 2.929 
+  Scale (η): 276.815 
+
+β > 1 → Verschleißausfall (erwartet für Turbofan)
+```
+
+**Interpretation:**
+
+- **AIC-Vergleich:** Weibull (1177.08) gewinnt knapp gegen Normal (1178.77), Differenz 1.69. Eine Differenz unter ~2 gilt als kaum unterscheidbar – beide unimodalen Verteilungen passen wegen der Bimodalität nicht perfekt. Ehrliche Einordnung: keiner gewinnt klar.
+
+- **Shape-Parameter β = 2.93 > 1:** Das ist die eigentlich wichtige Aussage. β > 1 bedeutet die Ausfallrate **steigt mit dem Alter** – klassischer Verschleißausfall. Je älter die Engine, desto wahrscheinlicher fällt sie pro Zyklus aus. Das ist exakt das physikalisch erwartete Verhalten für ein mechanisches System wie einen Turbofan und rechtfertigt den Einsatz von Weibull-basierten Survival-Modellen.
+
+- **Scale-Parameter η = 276.8:** Die charakteristische Lebensdauer – der Zeitpunkt bei dem 63.2% aller Engines ausgefallen sind. Liegt plausibel oberhalb des Medians (220.5) wegen der rechtsschiefen Ausreißer-Gruppe.
+
+---
+
+## 5. VIF-Check (Multikollinearität)
+
+### Warum VIF?
+
+Die Korrelationsmatrix hat **Paare** gezeigt (sensor_7/12 = 0.99 etc.). Der VIF (Variance Inflation Factor) ist stärker: er prüft ob ein Sensor durch eine **Kombination** aller anderen fast vollständig vorhergesagt werden kann – auch wenn er mit keinem einzelnen hoch korreliert.
+
+$$VIF_j = \frac{1}{1 - R^2_j}$$
+
+Wobei $R^2_j$ aus einer Regression von Sensor j auf alle anderen Sensoren stammt. **Faustregel:** VIF < 5 unbedenklich, VIF 5–10 problematisch, VIF > 10 → raus.
+
+**Vorgehen:** Immer nur den Sensor mit dem höchsten VIF entfernen, dann neu berechnen. Nie mehrere auf einmal – sie beeinflussen sich gegenseitig.
+
+```{r}
+candidates <- c("sensor_2", "sensor_3", "sensor_4", "sensor_6",
+                "sensor_7", "sensor_8", "sensor_9", "sensor_10",
+                "sensor_11", "sensor_12", "sensor_13", "sensor_14",
+                "sensor_15", "sensor_17", "sensor_20", "sensor_21")
+
+vif_data  <- train %>% dplyr::select(all_of(candidates), RUL)
+vif_model <- lm(RUL ~ ., data = vif_data)
+vif_results <- vif(vif_model)
+
+vif_df <- data.frame(sensor = names(vif_results), vif = round(vif_results, 1)) %>%
+  arrange(desc(vif))
+print(vif_df, row.names = FALSE)
+```
+
+```
+    sensor  vif
+ sensor_12 52.7
+  sensor_7 48.7
+  sensor_9 15.0
+  sensor_8 14.8
+ sensor_13 14.8
+ sensor_14 13.1
+ sensor_15  8.4
+ sensor_11  5.9
+ sensor_21  5.9
+ sensor_20  5.7
+  sensor_4  4.7
+ sensor_10  3.9
+ sensor_17  3.2
+  sensor_2  2.8
+  sensor_3  2.7
+  sensor_6  1.7
+```
+
+sensor_12 (52.7) und sensor_7 (48.7) – extreme Multikollinearität, deckt sich mit r = 0.99 aus der Korrelationsmatrix. Iterativer Bereinigungsprozess:
+
+```{r}
+# Iteration 1: sensor_12 raus (VIF 52.7)
+candidates_v2 <- setdiff(candidates, "sensor_12")
+vif2 <- vif(lm(RUL ~ ., data = train %>% dplyr::select(all_of(candidates_v2), RUL)))
+data.frame(sensor = names(vif2), vif = round(vif2, 1)) %>% arrange(desc(vif)) %>% print(row.names = FALSE)
+```
+
+```
+    sensor  vif
+  sensor_7 17.9    ← sensor_7 von 48.7 auf 17.9 gesunken (waren fast identisch)
+  sensor_9 14.9
+  sensor_8 14.8
+ sensor_13 14.8
+ sensor_14 13.1
+ sensor_15  8.1
+ [...]
+```
+
+```{r}
+# Iteration 2: sensor_7 raus (VIF 17.9)
+candidates_v3 <- setdiff(candidates_v2, "sensor_7")
+vif3 <- vif(lm(RUL ~ ., data = train %>% dplyr::select(all_of(candidates_v3), RUL)))
+data.frame(sensor = names(vif3), vif = round(vif3, 1)) %>% arrange(desc(vif)) %>% print(row.names = FALSE)
+```
+
+```
+    sensor  vif
+  sensor_9 14.9    ← sensor_8/13-Gruppe (r=0.96) + sensor_9/14-Gruppe (r=0.95)
+  sensor_8 14.7
+ sensor_13 14.7
+ sensor_14 13.1
+ [...]
+```
+
+```{r}
+# Iteration 3: sensor_9 raus (VIF 14.9)
+candidates_v4 <- setdiff(candidates_v3, "sensor_9")
+vif4 <- vif(lm(RUL ~ ., data = train %>% dplyr::select(all_of(candidates_v4), RUL)))
+data.frame(sensor = names(vif4), vif = round(vif4, 1)) %>% arrange(desc(vif)) %>% print(row.names = FALSE)
+```
+
+```
+    sensor  vif
+  sensor_8 14.7    ← sensor_8 und sensor_13 jetzt identisch → einen behalten
+ sensor_13 14.7
+ [...]
+```
+
+```{r}
+# Iteration 4: sensor_13 raus (VIF 14.7, redundant mit sensor_8)
+# sensor_8 behalten: RUL-Korrelation minimal stärker (-0.634 vs -0.635)
+candidates_v5 <- setdiff(candidates_v4, "sensor_13")
+vif5 <- vif(lm(RUL ~ ., data = train %>% dplyr::select(all_of(candidates_v5), RUL)))
+data.frame(sensor = names(vif5), vif = round(vif5, 1)) %>% arrange(desc(vif)) %>% print(row.names = FALSE)
+```
+
+```
+    sensor vif
+ sensor_15 6.2    ← alle VIFs unter 10, Prozess abgeschlossen
+ sensor_11 5.6
+ sensor_21 4.8
+ sensor_20 4.7
+  sensor_4 4.6
+ sensor_10 3.4
+ sensor_17 3.2
+  sensor_8 3.1
+  sensor_2 2.8
+  sensor_3 2.7
+ sensor_14 1.8
+  sensor_6 1.7
+```
+
+```{r}
+# Finale Feature-Liste
+final_sensors <- candidates_v5
+cat("Rausgeflogen (VIF > 10):\n")
+cat(" sensor_12 (VIF 52.7) – redundant mit sensor_7\n")
+cat(" sensor_7  (VIF 17.9) – redundant mit sensor_12\n")
+cat(" sensor_9  (VIF 14.9) – redundant mit sensor_14\n")
+cat(" sensor_13 (VIF 14.7) – redundant mit sensor_8\n\n")
+cat("Finale Sensoren für Modellierung (", length(final_sensors), "):\n")
+print(final_sensors)
+```
+
+```
+Rausgeflogen (VIF > 10):
+ sensor_12 (VIF 52.7) – redundant mit sensor_7
+ sensor_7  (VIF 17.9) – redundant mit sensor_12
+ sensor_9  (VIF 14.9) – redundant mit sensor_14
+ sensor_13 (VIF 14.7) – redundant mit sensor_8
+
+Finale Sensoren für Modellierung ( 12 ):
+ [1] "sensor_2"  "sensor_3"  "sensor_4"  "sensor_6"  "sensor_8"  "sensor_10"
+ [7] "sensor_11" "sensor_14" "sensor_15" "sensor_17" "sensor_20" "sensor_21"
+```
+
+---
+
+## 6. EDA-Zusammenfassung
+
+```{r}
+cat("=== EDA-Zusammenfassung FD003 ===\n\n")
+
+cat("1. LEBENSDAUERN:\n")
+cat("   Mittelwert:", round(mean(lifetimes$lifetime), 1), "Zyklen\n")
+cat("   Median:", round(median(lifetimes$lifetime), 1), "Zyklen\n")
+cat("   SD:", round(sd(lifetimes$lifetime), 1), "Zyklen\n")
+cat("   → Bimodale Verteilung deutet auf 2 Fault Modes hin\n\n")
+
+cat("2. SENSOREN:\n")
+cat("   Gesamt:", 21, "\n")
+cat("   Gedroppt (konstant):", 21 - length(sensor_cols), "\n")
+cat("   Verwendet:", length(sensor_cols), "\n\n")
+
+cat("3. WEIBULL vs. NORMAL:\n")
+cat("   Weibull AIC:", round(fit_w$aic, 2), "\n")
+cat("   Normal  AIC:", round(fit_n$aic, 2), "\n")
+cat("   Besserer Fit:", 
+    ifelse(fit_w$aic < fit_n$aic, "Weibull ✓", "Normal"), "\n")
+cat("   Shape β =", round(fit_w$estimate["shape"], 3), "→ Verschleißausfall\n\n")
+
+cat("4. TOP-3 SENSOREN (Korrelation mit RUL):\n")
+print(head(rul_corr[, c("sensor", "correlation")], 3))
+cat("\n")
+
+cat("5. VIF-BEREINIGUNG:\n")
+cat("   4 Sensoren rausgeflogen (sensor_12, _7, _9, _13)\n")
+cat("   12 finale Sensoren für Modellierung\n")
+```
+
+```
+=== EDA-Zusammenfassung FD003 ===
+
+1. LEBENSDAUERN:
+   Mittelwert: 247.2 Zyklen
+   Median: 220.5 Zyklen
+   SD: 86.5 Zyklen
+   → Bimodale Verteilung deutet auf 2 Fault Modes hin
+
+2. SENSOREN:
+   Gesamt: 21 
+   Gedroppt (konstant): 5 
+   Verwendet: 16 
+
+3. WEIBULL vs. NORMAL:
+   Weibull AIC: 1177.08 
+   Normal  AIC: 1178.77 
+   Besserer Fit: Weibull ✓ 
+   Shape β = 2.929 → Verschleißausfall
+
+4. TOP-3 SENSOREN (Korrelation mit RUL):
+     sensor correlation
+1 sensor_11  -0.8045324
+2  sensor_4  -0.7700509
+3 sensor_17  -0.7257510
+
+5. VIF-BEREINIGUNG:
+   4 Sensoren rausgeflogen (sensor_12, _7, _9, _13)
+   12 finale Sensoren für Modellierung
+```
+
+---
+
+**Nächste Schritte:**
+
+- `02_preprocessing.qmd` – Feature Engineering (Rolling Statistics), Normalisierung, Export für Python
+- `03_survival_kaplan_meier.qmd` – Kaplan-Meier-Kurven mit Subgruppen-Vergleich (kurze vs. lange Lebensdauer) + Log-Rank-Test
+- `04_survival_weibull.qmd` – Weibull AFT-Modell mit Sensor-Covariaten
+- `05_survival_cox.qmd` – Cox PH, Annahmentest (cox.zph), Brücke zum ML-Teil

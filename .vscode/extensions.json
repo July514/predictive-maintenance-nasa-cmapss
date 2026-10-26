@@ -1,0 +1,17 @@
+{
+  "recommendations": [
+    // Python
+    "ms-python.python",
+    "ms-toolsai.jupyter",
+    "charliermarsh.ruff",
+
+    // R
+    "reditorsupport.r",
+    "quarto.quarto",
+
+    // Allgemein
+    "yzhang.markdown-all-in-one",
+    "eamodio.gitlens",
+    "github.copilot"
+  ]
+}

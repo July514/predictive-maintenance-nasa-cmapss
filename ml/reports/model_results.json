@@ -1,0 +1,30 @@
+{
+  "Random Forest": {
+    "Model": "Random Forest",
+    "RMSE": 20.66,
+    "MAE": 15.36,
+    "R\u00b2": 0.751,
+    "NASA Score": 2011.9
+  },
+  "XGBoost": {
+    "Model": "XGBoost",
+    "RMSE": 20.45,
+    "MAE": 15.21,
+    "R\u00b2": 0.756,
+    "NASA Score": 1801.4
+  },
+  "SVR (RBF)": {
+    "Model": "SVR (RBF)",
+    "RMSE": 21.12,
+    "MAE": 15.73,
+    "R\u00b2": 0.74,
+    "NASA Score": 1809.1
+  },
+  "BiLSTM + Attention": {
+    "Model": "BiLSTM + Attention",
+    "RMSE": 13.33,
+    "MAE": 10.05,
+    "R\u00b2": 0.896,
+    "NASA Score": 265.4
+  }
+}
